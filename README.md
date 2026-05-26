@@ -126,8 +126,7 @@ checkin> d3
   Marked as read: Weekly digest
 
 checkin> x
-  All emails marked as read.
-  Note: Teams chats can't be marked as read via API.
+  All marked as read.
 ```
 
 ## Files

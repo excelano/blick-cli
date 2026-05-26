@@ -16,11 +16,15 @@ type ChatMessage struct {
 }
 
 func (g *GraphClient) PendingChats() ([]ChatMessage, error) {
-	// Fetch recent chats and filter to those where someone else sent the last
-	// message (i.e., waiting on your reply). This avoids relying on unreadCount
-	// which the Graph API doesn't reliably return.
+	// "Unread" uses Graph's per-user viewpoint.lastMessageReadDateTime: a
+	// chat is unread when the last message's createdDateTime is newer than
+	// the user's last-read mark. Replaces the older "last message wasn't
+	// from me" workaround from when Graph didn't expose per-user chat read
+	// state. Also honors viewpoint.isHidden so chats the user hid in Teams
+	// stay hidden here. The 24h cutoff stays — an unread message from last
+	// week shouldn't linger in the panel.
 	query := url.Values{
-		"$select": {"id,topic,chatType,lastMessagePreview"},
+		"$select": {"id,topic,lastMessagePreview,viewpoint"},
 		"$expand": {"lastMessagePreview"},
 		"$top":    {"50"},
 	}
@@ -36,9 +40,8 @@ func (g *GraphClient) PendingChats() ([]ChatMessage, error) {
 
 	var result struct {
 		Value []struct {
-			ID       string `json:"id"`
-			Topic    string `json:"topic"`
-			ChatType string `json:"chatType"`
+			ID                 string `json:"id"`
+			Topic              string `json:"topic"`
 			LastMessagePreview *struct {
 				Body struct {
 					Content string `json:"content"`
@@ -52,6 +55,10 @@ func (g *GraphClient) PendingChats() ([]ChatMessage, error) {
 				CreatedDateTime string `json:"createdDateTime"`
 				MessageType     string `json:"messageType"`
 			} `json:"lastMessagePreview"`
+			Viewpoint *struct {
+				IsHidden                 bool   `json:"isHidden"`
+				LastMessageReadDateTime  string `json:"lastMessageReadDateTime"`
+			} `json:"viewpoint"`
 		} `json:"value"`
 	}
 
@@ -63,29 +70,39 @@ func (g *GraphClient) PendingChats() ([]ChatMessage, error) {
 
 	var messages []ChatMessage
 	for _, chat := range result.Value {
+		if chat.Viewpoint != nil && chat.Viewpoint.IsHidden {
+			continue
+		}
 		if chat.LastMessagePreview == nil {
 			continue
 		}
 
-		// Skip system messages (meeting recordings, etc.)
+		// Keep regular messages (and the rare empty messageType) and drop
+		// the rest — joins, leaves, renames, meeting recordings, etc.
 		if chat.LastMessagePreview.MessageType != "" && chat.LastMessagePreview.MessageType != "message" {
 			continue
 		}
 
-		// Skip if sender is unknown
 		if chat.LastMessagePreview.From == nil || chat.LastMessagePreview.From.User == nil {
 			continue
 		}
 
-		// Skip if you sent the last message — not pending
-		if chat.LastMessagePreview.From.User.ID == g.userID {
+		sent, _ := time.Parse(time.RFC3339Nano, chat.LastMessagePreview.CreatedDateTime)
+		if sent.Before(cutoff) {
 			continue
 		}
 
-		sent, _ := time.Parse(time.RFC3339Nano, chat.LastMessagePreview.CreatedDateTime)
-
-		// Only show messages from the last 24 hours
-		if sent.Before(cutoff) {
+		// The real read-state check. lastMessageReadDateTime can be
+		// "0001-01-01T00:00:00Z" for chats the user has never opened; the
+		// comparison still works because that's older than any real sent
+		// time. We do NOT skip chats where the last message is from the
+		// signed-in user — Teams advances lastMessageReadDateTime on send,
+		// so the viewpoint check already handles that.
+		var lastRead time.Time
+		if chat.Viewpoint != nil {
+			lastRead, _ = time.Parse(time.RFC3339Nano, chat.Viewpoint.LastMessageReadDateTime)
+		}
+		if !sent.After(lastRead) {
 			continue
 		}
 
@@ -108,6 +125,21 @@ func (g *GraphClient) PendingChats() ([]ChatMessage, error) {
 	}
 
 	return messages, nil
+}
+
+// MarkChatRead advances viewpoint.lastMessageReadDateTime for the signed-in
+// user, which is what PendingChats keys off — so the chat drops out of the
+// pending list immediately. Mirrors the iOS app's markChatRead. Requires
+// Chat.ReadWrite.
+func (g *GraphClient) MarkChatRead(chatID string) error {
+	body := map[string]interface{}{
+		"user": map[string]string{
+			"id":       g.userID,
+			"tenantId": g.tenantID,
+		},
+	}
+	_, err := g.post(fmt.Sprintf("/chats/%s/markChatReadForUser", chatID), body)
+	return err
 }
 
 func (g *GraphClient) GetChatMessages(chatID string, count int) ([]ChatMessage, error) {

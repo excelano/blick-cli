@@ -180,26 +180,28 @@ func markRead(client *GraphClient, item Item) {
 		}
 		fmt.Printf("  Marked as read: %s\n", truncate(item.Email.Subject, 50))
 	case "chat":
-		// No Graph API to mark Teams chats as read
-		fmt.Printf("  %sNote: Teams chats can't be marked as read via API. Open in Teams to clear.%s\n", dim, reset)
+		if err := client.MarkChatRead(item.Chat.ChatID); err != nil {
+			fmt.Printf("  %sError: %v%s\n", red, err, reset)
+			return
+		}
+		fmt.Printf("  Marked as read: %s\n", truncate(item.Chat.Topic, 50))
 	}
 }
 
 func markAllRead(client *GraphClient, items []Item) {
-	hasChats := false
 	for _, item := range items {
-		if item.Kind == "email" {
+		switch item.Kind {
+		case "email":
 			if err := client.MarkEmailRead(item.Email.ID); err != nil {
 				fmt.Printf("  %sError marking %q: %v%s\n", red, item.Email.Subject, err, reset)
 			}
-		} else {
-			hasChats = true
+		case "chat":
+			if err := client.MarkChatRead(item.Chat.ChatID); err != nil {
+				fmt.Printf("  %sError marking %q: %v%s\n", red, item.Chat.Topic, err, reset)
+			}
 		}
 	}
-	fmt.Printf("  %sAll emails marked as read.%s\n", green, reset)
-	if hasChats {
-		fmt.Printf("  %sNote: Teams chats can't be marked as read via API.%s\n", dim, reset)
-	}
+	fmt.Printf("  %sAll marked as read.%s\n", green, reset)
 }
 
 func replyTo(client *GraphClient, item Item, scanner *bufio.Scanner) {

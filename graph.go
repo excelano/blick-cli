@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"golang.org/x/oauth2"
 )
@@ -18,6 +20,7 @@ type GraphClient struct {
 	tokenSource oauth2.TokenSource
 	httpClient  *http.Client
 	userID      string
+	tenantID    string
 }
 
 func NewGraphClient(cfg Config, tok *oauth2.Token) (*GraphClient, error) {
@@ -40,7 +43,39 @@ func NewGraphClient(cfg Config, tok *oauth2.Token) (*GraphClient, error) {
 	}
 	g.userID = me.ID
 
+	// Pull the home tenant id off the access token. markChatReadForUser
+	// needs a teamworkUserIdentity with both id and tenantId in the body,
+	// and the token's `tid` claim is the authoritative home tenant of the
+	// signed-in account (matches what MSAL exposes as homeAccountId.tenantId
+	// in the iOS app). Falls back to the configured tenant id if the token
+	// isn't a JWT — Graph access tokens are JWTs in practice.
+	g.tenantID = tidFromToken(tok.AccessToken)
+	if g.tenantID == "" {
+		g.tenantID = cfg.TenantID
+	}
+
 	return g, nil
+}
+
+// tidFromToken extracts the `tid` claim from a JWT access token without
+// validating the signature (we trust the token because we just acquired it).
+// Returns "" if the token isn't a parseable JWT.
+func tidFromToken(token string) string {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return ""
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return ""
+	}
+	var claims struct {
+		TID string `json:"tid"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return ""
+	}
+	return claims.TID
 }
 
 func (g *GraphClient) get(path string, query url.Values) ([]byte, error) {
