@@ -99,13 +99,13 @@ $ checkin
   📅 Standup with Tony — in 47 min — Online
 
   📧 unread emails (3):
-    1. Christa — "D13 deck revisions"         (10 min ago)
-    2. Art Acuna — "RE: Department contracts"  (1 hour ago)
+    1. Alex K. — "Deck revisions"             (10 min ago)
+    2. Jordan R. — "RE: Contract draft"        (1 hour ago)
     3. Newsletter — "Weekly digest"            (3 hours ago)
 
   💬 pending chats (2):
-    4. Matt Hyde — "quick question on timeline"  (32 min ago)
-    5. Tony — "can you check the D12 numbers"    (1 hour ago)
+    4. Sam P. — "quick question on timeline"   (32 min ago)
+    5. Riley T. — "can you check the numbers"  (1 hour ago)
 
   Commands:
     <N>      view message      r<N>     reply
@@ -116,7 +116,7 @@ checkin> 1
   (shows full email body)
 
 checkin> r4
-  Reply in Matt Hyde:
+  Reply in Sam P.:
   > Should be ready by EOD tomorrow.
   Sent.
 
