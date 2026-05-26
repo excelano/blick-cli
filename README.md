@@ -19,12 +19,10 @@ curl -fsSL https://excelano.com/apt/excelano-archive-keyring.gpg | \
   sudo tee /usr/share/keyrings/excelano-archive-keyring.gpg > /dev/null
 echo "deb [signed-by=/usr/share/keyrings/excelano-archive-keyring.gpg] https://excelano.com/apt stable main" | \
   sudo tee /etc/apt/sources.list.d/excelano.list
-sudo apt update && sudo apt install checkin-cli
+sudo apt update && sudo apt install checkin
 ```
 
-The package name is `checkin-cli`; the binary it installs is `checkin`.
-
-To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/uninstall.sh | sh` (or `sudo apt remove checkin-cli` if installed via apt).
+To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/uninstall.sh | sh` (or `sudo apt remove checkin` if installed via apt).
 
 ### Build from source
 
@@ -50,7 +48,7 @@ az login
 ./setup.sh
 ```
 
-(Or if you installed via apt, `setup.sh` ships at `/usr/share/doc/checkin-cli/setup.sh`.)
+(Or if you installed via apt, `setup.sh` ships at `/usr/share/doc/checkin/setup.sh`.)
 
 ### Option B: Manual (Azure portal)
 

@@ -100,7 +100,7 @@ pick_install_dir() {
 
 download_and_install() {
 	VERSION_NUM=${VERSION#v}
-	ARCHIVE="checkin-cli_${VERSION_NUM}_${PLATFORM}.tar.gz"
+	ARCHIVE="checkin_${VERSION_NUM}_${PLATFORM}.tar.gz"
 	URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
 	CHECKSUMS_URL="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
 

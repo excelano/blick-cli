@@ -29,8 +29,8 @@ builds:
       - -s -w
 
 archives:
-  - id: checkin-cli
-    name_template: "checkin-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - id: checkin
+    name_template: "checkin_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
         formats: ["zip"]
@@ -41,8 +41,8 @@ archives:
       - setup.sh
 
 nfpms:
-  - id: checkin-cli
-    package_name: checkin-cli
+  - id: checkin
+    package_name: checkin
     file_name_template: "{{ .ConventionalFileName }}"
     maintainer: David M. Anderson <david.anderson@excelano.com>
     description: |
@@ -50,7 +50,7 @@ nfpms:
       Single-screen status panel: unread Outlook mail, pending Teams chats,
       next meeting. Reply, mark-read, mark-all-read, refresh inline. Pure
       Go, device-code OAuth, requires your own Azure app registration
-      (see /usr/share/doc/checkin-cli/setup.sh).
+      (see /usr/share/doc/checkin/setup.sh).
     homepage: https://github.com/excelano/checkin-cli
     license: MIT
     formats:
@@ -60,13 +60,13 @@ nfpms:
     bindir: /usr/bin
     contents:
       - src: ./LICENSE
-        dst: /usr/share/doc/checkin-cli/copyright
+        dst: /usr/share/doc/checkin/copyright
       - src: ./README.md
-        dst: /usr/share/doc/checkin-cli/README.md
+        dst: /usr/share/doc/checkin/README.md
       - src: ./SECURITY.md
-        dst: /usr/share/doc/checkin-cli/SECURITY.md
+        dst: /usr/share/doc/checkin/SECURITY.md
       - src: ./setup.sh
-        dst: /usr/share/doc/checkin-cli/setup.sh
+        dst: /usr/share/doc/checkin/setup.sh
 
 checksum:
   name_template: "checksums.txt"
