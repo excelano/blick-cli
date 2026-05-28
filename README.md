@@ -10,16 +10,13 @@ The fastest path on Linux or macOS:
 curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/install.sh | sh
 ```
 
-This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.1.0 sh`.
+This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.2.1 sh`.
 
-On Debian and Ubuntu, you can install via the [Excelano apt repository](https://excelano.com/apt/) so updates flow through `apt upgrade`:
+On Debian and Ubuntu, add the [Excelano apt repository](https://excelano.com/apt/) once so updates flow through `apt upgrade`:
 
 ```sh
-curl -fsSL https://excelano.com/apt/excelano-archive-keyring.gpg | \
-  sudo tee /usr/share/keyrings/excelano-archive-keyring.gpg > /dev/null
-echo "deb [signed-by=/usr/share/keyrings/excelano-archive-keyring.gpg] https://excelano.com/apt stable main" | \
-  sudo tee /etc/apt/sources.list.d/excelano.list
-sudo apt update && sudo apt install checkin
+curl -fsSL https://excelano.com/apt/setup.sh | sudo sh
+sudo apt install checkin
 ```
 
 To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/uninstall.sh | sh` (or `sudo apt remove checkin` if installed via apt).
