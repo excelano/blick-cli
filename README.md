@@ -93,16 +93,16 @@ Without admin consent, checkin won't be able to authenticate at all in locked-do
 ```
 $ checkin
 
-  📅 Standup with Tony — in 47 min — Online
+  📅 Standup with Tony — in 47 min · 10:30 AM — Online
 
   📧 unread emails (3):
-    1. Alex K. — "Deck revisions"             (10 min ago)
-    2. Jordan R. — "RE: Contract draft"        (1 hour ago)
-    3. Newsletter — "Weekly digest"            (3 hours ago)
+    1. Alex K. — "Deck revisions"              (10 min ago · 9:42 AM)
+    2. Jordan R. — "RE: Contract draft"         (1 hour ago · 8:53 AM)
+    3. Newsletter — "Weekly digest"             (3 hours ago · 6:48 AM)
 
   💬 pending chats (2):
-    4. Sam P. — "quick question on timeline"   (32 min ago)
-    5. Riley T. — "can you check the numbers"  (1 hour ago)
+    4. Sam P. — "quick question on timeline"    (32 min ago · 9:20 AM)
+    5. Riley T. — "can you check the numbers"   (1 hour ago · 8:51 AM)
 
   Commands:
     <N>      view message      r<N>     reply

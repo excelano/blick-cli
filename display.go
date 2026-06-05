@@ -43,6 +43,24 @@ func relativeTime(t time.Time) string {
 	}
 }
 
+func absoluteTime(t time.Time) string {
+	now := time.Now()
+	local := t.Local()
+
+	if now.Year() == local.Year() && now.YearDay() == local.YearDay() {
+		return local.Format("3:04 PM")
+	}
+
+	diff := local.Sub(now)
+	if diff < 0 {
+		diff = -diff
+	}
+	if diff < 7*24*time.Hour {
+		return local.Format("Mon 3:04 PM")
+	}
+	return local.Format("Jan 2")
+}
+
 func untilTime(t time.Time) string {
 	d := time.Until(t)
 	if d < 0 {
@@ -106,10 +124,10 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 			location = " — Online"
 		}
 
-		fmt.Printf("  📅 %s%s%s — %s%s%s%s\n\n",
+		fmt.Printf("  📅 %s%s%s — %s%s%s %s· %s%s%s\n\n",
 			bold, meeting.Subject, reset,
 			timeColor, until, reset,
-			dim+location+reset)
+			dim, absoluteTime(meeting.Start), location, reset)
 	} else {
 		fmt.Printf("  📅 %sNo upcoming meetings%s\n\n", dim, reset)
 	}
@@ -122,11 +140,11 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 	} else {
 		fmt.Printf("  📧 %sunread emails (%d):%s\n", bold, len(emails), reset)
 		for i, e := range emails {
-			fmt.Printf("    %s%d.%s %s — %q  %s(%s)%s\n",
+			fmt.Printf("    %s%d.%s %s — %q  %s(%s · %s)%s\n",
 				cyan, i+1, reset,
 				e.From,
 				truncate(e.Subject, 50),
-				dim, relativeTime(e.Received), reset)
+				dim, relativeTime(e.Received), absoluteTime(e.Received), reset)
 		}
 		fmt.Println()
 	}
@@ -143,11 +161,11 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 		fmt.Printf("  💬 %spending chats (%d):%s\n", bold, len(chats), reset)
 		for i, c := range chats {
 			preview := truncate(c.Preview, 40)
-			fmt.Printf("    %s%d.%s %s — %q  %s(%s)%s\n",
+			fmt.Printf("    %s%d.%s %s — %q  %s(%s · %s)%s\n",
 				cyan, offset+i+1, reset,
 				c.Topic,
 				preview,
-				dim, relativeTime(c.Sent), reset)
+				dim, relativeTime(c.Sent), absoluteTime(c.Sent), reset)
 		}
 		fmt.Println()
 	}
