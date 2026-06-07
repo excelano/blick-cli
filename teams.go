@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -192,9 +193,11 @@ func (g *GraphClient) GetChatMessages(chatID string, count int) ([]ChatMessage, 
 }
 
 func (g *GraphClient) SendChatMessage(chatID, text string) error {
+	html := strings.ReplaceAll(text, "\n", "<br>")
 	body := map[string]interface{}{
 		"body": map[string]string{
-			"content": text,
+			"contentType": "html",
+			"content":     html,
 		},
 	}
 	_, err := g.post(fmt.Sprintf("/me/chats/%s/messages", chatID), body)

@@ -211,12 +211,21 @@ func replyTo(client *GraphClient, item Item, scanner *bufio.Scanner) {
 	case "chat":
 		fmt.Printf("  Reply in %s:\n", item.Chat.Topic)
 	}
+	fmt.Printf("  %s(end with an empty line, or Ctrl-C to cancel)%s\n", dim, reset)
 
-	fmt.Printf("  %s> %s", cyan, reset)
-	if !scanner.Scan() {
-		return
+	var lines []string
+	for {
+		fmt.Printf("  %s> %s", cyan, reset)
+		if !scanner.Scan() {
+			return
+		}
+		line := scanner.Text()
+		if line == "" {
+			break
+		}
+		lines = append(lines, line)
 	}
-	text := strings.TrimSpace(scanner.Text())
+	text := strings.TrimRight(strings.Join(lines, "\n"), " \t\n")
 	if text == "" {
 		fmt.Println("  (cancelled)")
 		return

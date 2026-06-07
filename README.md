@@ -10,7 +10,7 @@ The fastest path on Linux or macOS:
 curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/install.sh | sh
 ```
 
-This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.2.1 sh`.
+This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.2.3 sh`.
 
 On Debian and Ubuntu, add the [Excelano apt repository](https://excelano.com/apt/) once so updates flow through `apt upgrade`:
 
@@ -114,7 +114,10 @@ checkin> 1
 
 checkin> r4
   Reply in Sam P.:
+  (end with an empty line, or Ctrl-C to cancel)
   > Should be ready by EOD tomorrow.
+  > Let me know if you want to walk through it on a call.
+  >
   Sent.
 
 checkin> d3

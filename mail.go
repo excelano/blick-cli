@@ -95,8 +95,9 @@ func (g *GraphClient) MarkEmailRead(id string) error {
 }
 
 func (g *GraphClient) ReplyToEmail(id, comment string) error {
+	html := strings.ReplaceAll(comment, "\n", "<br>")
 	body := map[string]interface{}{
-		"comment": comment + "<br><br>",
+		"comment": html + "<br><br>",
 	}
 	_, err := g.post(fmt.Sprintf("/me/messages/%s/reply", id), body)
 	return err
