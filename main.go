@@ -211,7 +211,7 @@ func replyTo(client *GraphClient, item Item, scanner *bufio.Scanner) {
 	case "chat":
 		fmt.Printf("  Reply in %s:\n", item.Chat.Topic)
 	}
-	fmt.Printf("  %s(end with an empty line, or Ctrl-C to cancel)%s\n", dim, reset)
+	fmt.Printf("  %s(end with `.` on a line by itself, or Ctrl-C to cancel)%s\n", dim, reset)
 
 	var lines []string
 	for {
@@ -220,7 +220,7 @@ func replyTo(client *GraphClient, item Item, scanner *bufio.Scanner) {
 			return
 		}
 		line := scanner.Text()
-		if line == "" {
+		if line == "." {
 			break
 		}
 		lines = append(lines, line)
