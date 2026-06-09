@@ -17,15 +17,31 @@ type Item struct {
 
 var debug bool
 
+// Populated at build time via -ldflags by goreleaser.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--debug" {
 		debug = true
 		os.Args = append(os.Args[:1], os.Args[2:]...)
 	}
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-V") {
+		fmt.Printf("checkin %s (%s, %s)\n", version, commit, date)
+		os.Exit(0)
+	}
 	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
 		fmt.Println("Usage: checkin")
 		fmt.Println()
 		fmt.Println("Check unread Outlook emails, Teams chats, and your next meeting.")
+		fmt.Println()
+		fmt.Println("Flags:")
+		fmt.Println("  -h, --help      Show this help")
+		fmt.Println("  -V, --version   Show version")
+		fmt.Println("      --debug     Verbose Graph request logging")
 		fmt.Println()
 		fmt.Println("Config: ~/.config/checkin/config.json")
 		fmt.Println("  {\"client_id\": \"...\", \"tenant_id\": \"...\"}")
