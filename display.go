@@ -88,7 +88,7 @@ func untilTime(t time.Time) string {
 			}
 			return fmt.Sprintf("in %d hours", h)
 		}
-		return fmt.Sprintf("in %dh%dm", h, m)
+		return fmt.Sprintf("in %dh %dm", h, m)
 	}
 }
 
