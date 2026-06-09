@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +23,15 @@ var (
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
+)
+
+// Interactive REPL plumbing. One goroutine owns the stdin scanner and feeds
+// stdinLines; sigCh receives SIGINT so we can route Ctrl-C to "cancel the
+// reply" instead of letting it kill the process. Initialized in main() before
+// the REPL starts.
+var (
+	stdinLines chan string
+	sigCh      chan os.Signal
 )
 
 func main() {
@@ -80,15 +90,32 @@ func main() {
 
 	renderHelp()
 
-	scanner := bufio.NewScanner(os.Stdin)
+	stdinLines = make(chan string)
+	sigCh = make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			stdinLines <- scanner.Text()
+		}
+		close(stdinLines)
+	}()
+
 	for {
 		fmt.Printf("%scheckin>%s ", bold, reset)
-		if !scanner.Scan() {
+		var input string
+		select {
+		case line, ok := <-stdinLines:
+			if !ok {
+				fmt.Println()
+				return
+			}
+			input = strings.TrimSpace(line)
+		case <-sigCh:
 			fmt.Println()
-			break
+			return
 		}
 
-		input := strings.TrimSpace(scanner.Text())
 		if input == "" {
 			continue
 		}
@@ -122,7 +149,7 @@ func main() {
 				fmt.Printf("  Invalid item: %s\n", input)
 				continue
 			}
-			replyTo(client, items[n-1], scanner)
+			replyTo(client, items[n-1])
 
 		default:
 			n, err := strconv.Atoi(input)
@@ -222,7 +249,7 @@ func markAllRead(client *GraphClient, items []Item) {
 	fmt.Printf("  %sAll marked as read.%s\n", green, reset)
 }
 
-func replyTo(client *GraphClient, item Item, scanner *bufio.Scanner) {
+func replyTo(client *GraphClient, item Item) {
 	switch item.Kind {
 	case "email":
 		fmt.Printf("  Reply to %s — %q:\n", item.Email.From, truncate(item.Email.Subject, 40))
@@ -232,16 +259,24 @@ func replyTo(client *GraphClient, item Item, scanner *bufio.Scanner) {
 	fmt.Printf("  %s(end with `.` on a line by itself, or Ctrl-C to cancel)%s\n", dim, reset)
 
 	var lines []string
-	for {
+	done := false
+	for !done {
 		fmt.Printf("  %s> %s", cyan, reset)
-		if !scanner.Scan() {
+		select {
+		case line, ok := <-stdinLines:
+			if !ok {
+				return
+			}
+			if line == "." {
+				done = true
+			} else {
+				lines = append(lines, line)
+			}
+		case <-sigCh:
+			fmt.Println()
+			fmt.Println("  (cancelled)")
 			return
 		}
-		line := scanner.Text()
-		if line == "." {
-			break
-		}
-		lines = append(lines, line)
 	}
 	text := strings.TrimRight(strings.Join(lines, "\n"), " \t\n")
 	if text == "" {
