@@ -24,6 +24,9 @@ func getScopes(cfg Config) []string {
 	if cfg.EnableTeams {
 		s = append(s, "Chat.ReadWrite")
 	}
+	if cfg.PresenceHeartbeat {
+		s = append(s, "Presence.ReadWrite")
+	}
 	return s
 }
 

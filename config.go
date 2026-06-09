@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	ClientID    string `json:"client_id"`
-	TenantID    string `json:"tenant_id"`
-	EnableTeams bool   `json:"enable_teams"`
+	ClientID          string `json:"client_id"`
+	TenantID          string `json:"tenant_id"`
+	EnableTeams       bool   `json:"enable_teams"`
+	PresenceHeartbeat bool   `json:"presence_heartbeat"`
 }
 
 func configDir() string {
@@ -28,7 +29,9 @@ func loadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("reading config: %w", err)
 	}
 
-	var cfg Config
+	// Defaults applied before unmarshal so missing keys keep these values
+	// and explicit `false` in the config still wins.
+	cfg := Config{PresenceHeartbeat: true}
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return Config{}, fmt.Errorf("parsing config: %w", err)
 	}

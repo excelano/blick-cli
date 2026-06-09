@@ -10,7 +10,7 @@ The fastest path on Linux or macOS:
 curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/install.sh | sh
 ```
 
-This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.2.6 sh`.
+This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.2.7 sh`.
 
 On Debian and Ubuntu, add the [Excelano apt repository](https://excelano.com/apt/) once so updates flow through `apt upgrade`:
 
@@ -62,6 +62,7 @@ az login
    - `Mail.ReadWrite`
    - `Mail.Send`
    - `Calendars.Read`
+   - `Presence.ReadWrite`
    - `Chat.ReadWrite` ← requires admin consent
 5. Copy **Application (client) ID** and **Directory (tenant) ID** from the Overview page
 
@@ -73,7 +74,8 @@ cat > ~/.config/checkin/config.json << 'EOF'
 {
     "client_id": "YOUR_CLIENT_ID_HERE",
     "tenant_id": "YOUR_TENANT_ID_HERE",
-    "enable_teams": true
+    "enable_teams": true,
+    "presence_heartbeat": true
 }
 EOF
 ```
@@ -83,10 +85,10 @@ EOF
 Most enterprise tenants require admin consent for all permissions. Ask your IT admin to grant consent:
 
 ```bash
-az ad app permission grant --id YOUR_CLIENT_ID --api 00000003-0000-0000-c000-000000000000 --scope "User.Read Mail.ReadWrite Mail.Send Calendars.Read Chat.ReadWrite"
+az ad app permission grant --id YOUR_CLIENT_ID --api 00000003-0000-0000-c000-000000000000 --scope "User.Read Mail.ReadWrite Mail.Send Calendars.Read Presence.ReadWrite Chat.ReadWrite"
 ```
 
-Without admin consent, checkin won't be able to authenticate at all in locked-down tenants. If only `Chat.ReadWrite` is blocked, set `"enable_teams": false` in config to use email and calendar without Teams.
+Without admin consent, checkin won't be able to authenticate at all in locked-down tenants. If only `Chat.ReadWrite` is blocked, set `"enable_teams": false` in config to use email and calendar without Teams. To opt out of presence updates, set `"presence_heartbeat": false`.
 
 ## Usage
 
@@ -129,7 +131,7 @@ checkin> x
 
 ## Files
 
-- `~/.config/checkin/config.json` — client ID, tenant ID, and enable_teams flag
+- `~/.config/checkin/config.json` — client ID, tenant ID, and feature flags
 - `~/.config/checkin/token.json` — cached OAuth token (auto-created)
 
 ## Permissions
@@ -140,4 +142,22 @@ checkin> x
 | Mail.ReadWrite | Read and mark-read emails | No |
 | Mail.Send | Reply to emails | No |
 | Calendars.Read | Show next meeting | No |
+| Presence.ReadWrite | Nudge presence Away → Available on run | No |
 | Chat.ReadWrite | Read/reply Teams chats | Yes |
+
+## Presence heartbeat
+
+When you run `checkin`, the tool reads your current Microsoft 365 presence. If
+you're showing as Away — typically because Teams' idle timer fired — checkin
+registers itself as an active session with availability `Available` for one
+hour. Subsequent runs reset the hour.
+
+The mechanic is Graph's `presence: setPresence` endpoint, which is a
+*session* (not an override). Microsoft aggregates across sessions with the
+precedence DoNotDisturb > Busy > Available > Away, so our Available wins
+over Teams' idle-driven Away, but a user-set Do Not Disturb still wins over
+our Available. We never touch Busy, In a meeting, or Out of office — those
+are real signals and stay as-is.
+
+Opt out with `"presence_heartbeat": false` in config. With the heartbeat
+off, the `Presence.ReadWrite` scope is also not requested.

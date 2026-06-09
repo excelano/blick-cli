@@ -71,6 +71,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	maybeHeartbeatPresence(client, cfg)
+
 	items := fetchAndDisplay(client, cfg.EnableTeams)
 	if items == nil {
 		return
