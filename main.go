@@ -192,7 +192,7 @@ func main() {
 //   x, exit           -> ("exit",   -1)
 //   q, quit           -> ("quit",   -1)
 //   H, help           -> ("help",   -1)
-//   today             -> ("today",  -1)
+//   t, today          -> ("today",  -1)
 func parseCommand(input string) (string, int) {
 	fields := strings.Fields(input)
 	if len(fields) == 0 {
@@ -223,6 +223,8 @@ func parseCommand(input string) (string, int) {
 		return "exit", -1
 	case "H":
 		return "help", -1
+	case "t":
+		return "today", -1
 	case "r":
 		if len(rest) == 0 {
 			return "refresh", -1

@@ -172,11 +172,18 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 }
 
 func renderHelp() {
+	rows := [][4]string{
+		{"<N>", "view", "r<N>", "reply"},
+		{"d<N>", "done", "r", "refresh"},
+		{"t", "show today", "x", "exit (mark all read)"},
+		{"H", "help", "q", "quit"},
+	}
 	fmt.Printf("  %sCommands:%s\n", bold, reset)
-	fmt.Printf("    %s<N>%s      view               %sr<N>%s     reply\n", cyan, reset, cyan, reset)
-	fmt.Printf("    %sd<N>%s     done               %sr%s       refresh\n", cyan, reset, cyan, reset)
-	fmt.Printf("    %stoday%s    today's calendar   %sx%s       exit (mark all read)\n", cyan, reset, cyan, reset)
-	fmt.Printf("    %sH%s        help               %sq%s       quit\n", cyan, reset, cyan, reset)
+	for _, r := range rows {
+		fmt.Printf("    %s%-8s%s %-18s %s%-8s%s %s\n",
+			cyan, r[0], reset, r[1],
+			cyan, r[2], reset, r[3])
+	}
 	fmt.Println()
 }
 
@@ -189,7 +196,7 @@ func renderFullHelp() {
 		{"r<N>", "reply N", "Reply to the Nth item (ed-style editor)"},
 		{"d<N>", "done N", "Mark the Nth item as read"},
 		{"r", "refresh", "Reload the dashboard"},
-		{"", "today", "Show today's calendar"},
+		{"t", "today", "Show today's calendar"},
 		{"x", "exit", "Mark all items as read & quit"},
 		{"H", "help", "Show this help"},
 		{"q", "quit", "Quit"},
