@@ -50,8 +50,9 @@ func main() {
 		fmt.Println("With no command, opens the interactive dashboard.")
 		fmt.Println()
 		fmt.Println("Commands:")
-		fmt.Println("  today           Show today's calendar and exit")
-		fmt.Println("  contacts ...    Manage the address book (list, add, remove, show, seed)")
+		fmt.Println("  today                          Show today's calendar and exit")
+		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
+		fmt.Println("  email <contact> [--subject]    Compose and send a message")
 		fmt.Println()
 		fmt.Println("Flags:")
 		fmt.Println("  -h, --help      Show this help")
@@ -111,6 +112,11 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "email" {
+		runEmail(client, os.Args[2:])
+		return
+	}
+
 	items := fetchAndDisplay(client, cfg.EnableTeams)
 	if items == nil {
 		return
@@ -145,6 +151,14 @@ func main() {
 		}
 
 		if input == "" {
+			continue
+		}
+
+		// String-argument commands sit outside parseCommand's (cmd, int)
+		// shape — peel them off before the int-arg dispatcher.
+		fields := strings.Fields(input)
+		if len(fields) > 0 && fields[0] == "email" {
+			replEmail(client, fields[1:])
 			continue
 		}
 

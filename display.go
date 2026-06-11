@@ -212,6 +212,7 @@ func renderFullHelp() {
 		{"<N>", "view N", "Open the Nth item from the list"},
 		{"r<N>", "reply N", "Reply to the Nth item (ed-style editor)"},
 		{"d<N>", "done N", "Mark the Nth item as read"},
+		{"", "email <c>", "Compose a new message to contact <c>"},
 		{"r", "refresh", "Reload the dashboard"},
 		{"t", "today", "Show today's calendar"},
 		{"x", "exit", "Mark all items as read & quit"},

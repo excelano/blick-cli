@@ -103,6 +103,32 @@ func (g *GraphClient) ReplyToEmail(id, comment string) error {
 	return err
 }
 
+// SendMail composes and sends a new message in one shot via /me/sendMail
+// (saveToSentItems defaults to true so the message lands in Sent like any
+// other Outlook send). Content type is Text — the keyboard-first compose
+// flow doesn't deal in HTML.
+func (g *GraphClient) SendMail(to []string, subject, body string) error {
+	if len(to) == 0 {
+		return fmt.Errorf("no recipients")
+	}
+	recipients := make([]map[string]interface{}, len(to))
+	for i, addr := range to {
+		recipients[i] = map[string]interface{}{
+			"emailAddress": map[string]string{"address": addr},
+		}
+	}
+	payload := map[string]interface{}{
+		"message": map[string]interface{}{
+			"subject":      subject,
+			"body":         map[string]string{"contentType": "Text", "content": body},
+			"toRecipients": recipients,
+		},
+		"saveToSentItems": true,
+	}
+	_, err := g.post("/me/sendMail", payload)
+	return err
+}
+
 var (
 	htmlTagRe    = regexp.MustCompile(`<[^>]*>`)
 	htmlEntityRe = regexp.MustCompile(`&[a-zA-Z0-9#]+;`)
