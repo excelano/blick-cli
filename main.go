@@ -53,6 +53,7 @@ func main() {
 		fmt.Println("  today                          Show today's calendar and exit")
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
 		fmt.Println("  email <contact> [--subject]    Compose and send a message")
+		fmt.Println("  chat <contact>                 Send a Teams chat message")
 		fmt.Println()
 		fmt.Println("Flags:")
 		fmt.Println("  -h, --help      Show this help")
@@ -117,6 +118,15 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "chat" {
+		if !cfg.EnableTeams {
+			fmt.Fprintln(os.Stderr, "Teams is disabled in your config (\"enable_teams\": false). Set it to true and re-authenticate to use chat.")
+			os.Exit(1)
+		}
+		runChat(client, os.Args[2:])
+		return
+	}
+
 	items := fetchAndDisplay(client, cfg.EnableTeams)
 	if items == nil {
 		return
@@ -159,6 +169,14 @@ func main() {
 		fields := strings.Fields(input)
 		if len(fields) > 0 && fields[0] == "email" {
 			replEmail(client, fields[1:])
+			continue
+		}
+		if len(fields) > 0 && fields[0] == "chat" {
+			if !cfg.EnableTeams {
+				fmt.Printf("  %sTeams is disabled in your config.%s\n", dim, reset)
+				continue
+			}
+			replChat(client, fields[1:])
 			continue
 		}
 

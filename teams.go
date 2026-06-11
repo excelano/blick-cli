@@ -192,6 +192,63 @@ func (g *GraphClient) GetChatMessages(chatID string, count int) ([]ChatMessage, 
 	return messages, nil
 }
 
+// LookupUserID resolves a Graph user's object ID from their primary email
+// or UPN. Required for composing a new 1:1 chat — POST /chats wants the
+// recipient's object ID, not their address.
+func (g *GraphClient) LookupUserID(email string) (string, error) {
+	data, err := g.get(fmt.Sprintf("/users/%s", url.PathEscape(email)), url.Values{"$select": {"id"}})
+	if err != nil {
+		return "", err
+	}
+	var u struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &u); err != nil {
+		return "", err
+	}
+	if u.ID == "" {
+		return "", fmt.Errorf("no Graph user for %s", email)
+	}
+	return u.ID, nil
+}
+
+// EnsureOneOnOneChat creates a 1:1 chat between the signed-in user and
+// the recipient. Graph treats POST /chats as idempotent for oneOnOne —
+// if a chat already exists between the two users, the existing chat ID
+// comes back. Caller should cache the returned ID on the recipient's
+// contact entry so subsequent sends skip the create round-trip.
+func (g *GraphClient) EnsureOneOnOneChat(recipientUserID string) (string, error) {
+	body := map[string]interface{}{
+		"chatType": "oneOnOne",
+		"members": []map[string]interface{}{
+			{
+				"@odata.type":     "#microsoft.graph.aadUserConversationMember",
+				"roles":           []string{"owner"},
+				"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", g.userID),
+			},
+			{
+				"@odata.type":     "#microsoft.graph.aadUserConversationMember",
+				"roles":           []string{"owner"},
+				"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", recipientUserID),
+			},
+		},
+	}
+	data, err := g.post("/chats", body)
+	if err != nil {
+		return "", err
+	}
+	var c struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &c); err != nil {
+		return "", err
+	}
+	if c.ID == "" {
+		return "", fmt.Errorf("no chat ID returned by /chats")
+	}
+	return c.ID, nil
+}
+
 func (g *GraphClient) SendChatMessage(chatID, text string) error {
 	html := strings.ReplaceAll(text, "\n", "<br>")
 	body := map[string]interface{}{
