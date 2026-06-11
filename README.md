@@ -63,7 +63,9 @@ az login
    - `Mail.Send`
    - `Calendars.Read`
    - `Presence.ReadWrite`
-   - `Chat.ReadWrite` ← requires admin consent
+   - `People.Read`
+   - `Chat.ReadWrite` (optional, Teams chat support)
+   - `Chat.Create` (optional, Teams chat support)
 5. Copy **Application (client) ID** and **Directory (tenant) ID** from the Overview page
 
 Create the config file:
@@ -82,13 +84,13 @@ EOF
 
 ### Admin Consent
 
-Most enterprise tenants require admin consent for all permissions. Ask your IT admin to grant consent:
+By default, none of these Graph permissions require admin consent — they are all user-consentable, including the Chat scopes. Some tenants tighten the default and require admin consent for one or more of these; if yours does, ask your IT admin to grant consent:
 
 ```bash
-az ad app permission grant --id YOUR_CLIENT_ID --api 00000003-0000-0000-c000-000000000000 --scope "User.Read Mail.ReadWrite Mail.Send Calendars.Read Presence.ReadWrite Chat.ReadWrite"
+az ad app permission admin-consent --id YOUR_CLIENT_ID
 ```
 
-Without admin consent, blick won't be able to authenticate at all in locked-down tenants. If only `Chat.ReadWrite` is blocked, set `"enable_teams": false` in config to use email and calendar without Teams. To opt out of presence updates, set `"presence_heartbeat": false`.
+If a specific scope is blocked, the corresponding feature degrades: set `"enable_teams": false` to skip Teams chat, `"presence_heartbeat": false` to skip the presence nudge. The address book seed (`blick contacts seed`) needs `People.Read`; if that's blocked, hand-edit `~/.config/blick/contacts.json` instead.
 
 ## Usage
 
@@ -156,14 +158,18 @@ The same view is available inside the REPL by typing `today`.
 
 ## Permissions
 
-| Permission | What it does | Admin consent? |
-|---|---|---|
-| User.Read | Verify authentication | No |
-| Mail.ReadWrite | Read and mark-read emails | No |
-| Mail.Send | Reply to emails | No |
-| Calendars.Read | Show next meeting | No |
-| Presence.ReadWrite | Nudge presence Away → Available on run | No |
-| Chat.ReadWrite | Read/reply Teams chats | Yes |
+All scopes are user-consentable by default per Microsoft's stock Graph policy. Individual tenants can require admin consent for any of them — see the [Admin Consent](#admin-consent) section.
+
+| Permission | What it does |
+|---|---|
+| User.Read | Verify authentication |
+| Mail.ReadWrite | Read and mark-read emails |
+| Mail.Send | Reply to emails |
+| Calendars.Read | Show next meeting and today's calendar |
+| Presence.ReadWrite | Nudge presence Away → Available on run |
+| People.Read | Seed the address book from frequently-contacted people |
+| Chat.ReadWrite | Read/reply Teams chats |
+| Chat.Create | Start new 1:1 chats with address-book contacts |
 
 ## Presence heartbeat
 

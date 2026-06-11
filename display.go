@@ -168,7 +168,7 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 
 	// Chats
 	if !enableTeams {
-		fmt.Printf("  💬 %sTeams disabled (set \"enable_teams\": true in config after admin consent)%s\n\n", dim, reset)
+		fmt.Printf("  💬 %sTeams disabled (set \"enable_teams\": true in config to enable)%s\n\n", dim, reset)
 	} else if chatErr != nil {
 		fmt.Printf("  💬 %sCould not load chats: %v%s\n\n", red, chatErr, reset)
 	} else if len(chats) == 0 {

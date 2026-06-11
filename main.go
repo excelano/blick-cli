@@ -51,17 +51,31 @@ func main() {
 		fmt.Println()
 		fmt.Println("Commands:")
 		fmt.Println("  today           Show today's calendar and exit")
+		fmt.Println("  contacts ...    Manage the address book (list, add, remove, show, seed)")
 		fmt.Println()
 		fmt.Println("Flags:")
 		fmt.Println("  -h, --help      Show this help")
 		fmt.Println("  -V, --version   Show version")
 		fmt.Println("      --debug     Verbose Graph request logging")
 		fmt.Println()
-		fmt.Println("Config: ~/.config/blick/config.json")
-		fmt.Println("  {\"client_id\": \"...\", \"tenant_id\": \"...\"}")
+		fmt.Println("Config:   ~/.config/blick/config.json")
+		fmt.Println("          {\"client_id\": \"...\", \"tenant_id\": \"...\"}")
+		fmt.Println("Contacts: ~/.config/blick/contacts.json")
 		fmt.Println()
 		fmt.Println("See README.md for Azure AD app registration.")
 		os.Exit(0)
+	}
+
+	// Local-only contacts commands (everything except `seed`) don't need
+	// Graph or auth — handle them before the device-code flow so the user
+	// can curate the address book offline or pre-auth.
+	if len(os.Args) > 1 && os.Args[1] == "contacts" {
+		if needsGraphForContacts(os.Args[2:]) {
+			// fall through to auth, dispatch happens below
+		} else {
+			runContacts(nil, os.Args[2:])
+			return
+		}
 	}
 
 	cfg, err := loadConfig()
@@ -89,6 +103,11 @@ func main() {
 
 	if len(os.Args) > 1 && os.Args[1] == "today" {
 		showToday(client)
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "contacts" {
+		runContacts(client, os.Args[2:])
 		return
 	}
 

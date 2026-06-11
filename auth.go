@@ -19,10 +19,12 @@ func getScopes(cfg Config) []string {
 		"Mail.ReadWrite",
 		"Mail.Send",
 		"Calendars.Read",
+		"People.Read",
 		"offline_access",
 	}
 	if cfg.EnableTeams {
 		s = append(s, "Chat.ReadWrite")
+		s = append(s, "Chat.Create")
 	}
 	if cfg.PresenceHeartbeat {
 		s = append(s, "Presence.ReadWrite")
