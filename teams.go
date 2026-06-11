@@ -16,7 +16,7 @@ type ChatMessage struct {
 	Sent    time.Time
 }
 
-func (g *GraphClient) PendingChats() ([]ChatMessage, error) {
+func (g *GraphClient) UnreadChats() ([]ChatMessage, error) {
 	// "Unread" uses Graph's per-user viewpoint.lastMessageReadDateTime: a
 	// chat is unread when the last message's createdDateTime is newer than
 	// the user's last-read mark. Replaces the older "last message wasn't
@@ -129,8 +129,8 @@ func (g *GraphClient) PendingChats() ([]ChatMessage, error) {
 }
 
 // MarkChatRead advances viewpoint.lastMessageReadDateTime for the signed-in
-// user, which is what PendingChats keys off — so the chat drops out of the
-// pending list immediately. Mirrors the iOS app's markChatRead. Requires
+// user, which is what UnreadChats keys off — so the chat drops out of the
+// unread list immediately. Mirrors the iOS app's markChatRead. Requires
 // Chat.ReadWrite.
 func (g *GraphClient) MarkChatRead(chatID string) error {
 	body := map[string]interface{}{

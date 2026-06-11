@@ -155,10 +155,10 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 	} else if chatErr != nil {
 		fmt.Printf("  💬 %sCould not load chats: %v%s\n\n", red, chatErr, reset)
 	} else if len(chats) == 0 {
-		fmt.Printf("  💬 %sNo pending chats%s\n\n", dim, reset)
+		fmt.Printf("  💬 %sNo unread chats%s\n\n", dim, reset)
 	} else {
 		offset := len(emails)
-		fmt.Printf("  💬 %spending chats (%d):%s\n", bold, len(chats), reset)
+		fmt.Printf("  💬 %sunread chats (%d):%s\n", bold, len(chats), reset)
 		for i, c := range chats {
 			preview := truncate(c.Preview, 40)
 			fmt.Printf("    %s%d.%s %s — %q  %s(%s · %s)%s\n",
@@ -173,8 +173,112 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 
 func renderHelp() {
 	fmt.Printf("  %sCommands:%s\n", bold, reset)
-	fmt.Printf("    %s<N>%s      view message      %sr<N>%s     reply\n", cyan, reset, cyan, reset)
-	fmt.Printf("    %sd<N>%s     mark read (done)   %sx%s       mark all read & quit\n", cyan, reset, cyan, reset)
-	fmt.Printf("    %sr%s        refresh            %sq%s       quit\n", cyan, reset, cyan, reset)
+	fmt.Printf("    %s<N>%s      view               %sr<N>%s     reply\n", cyan, reset, cyan, reset)
+	fmt.Printf("    %sd<N>%s     done               %sr%s       refresh\n", cyan, reset, cyan, reset)
+	fmt.Printf("    %stoday%s    today's calendar   %sx%s       exit (mark all read)\n", cyan, reset, cyan, reset)
+	fmt.Printf("    %sH%s        help               %sq%s       quit\n", cyan, reset, cyan, reset)
 	fmt.Println()
+}
+
+func renderFullHelp() {
+	fmt.Println()
+	fmt.Printf("  %sCommands:%s\n\n", bold, reset)
+	fmt.Printf("    %s%-8s  %-13s  %s%s\n", dim, "Short", "Long", "What it does", reset)
+	rows := []struct{ short, long, desc string }{
+		{"<N>", "view N", "Open the Nth item from the list"},
+		{"r<N>", "reply N", "Reply to the Nth item (ed-style editor)"},
+		{"d<N>", "done N", "Mark the Nth item as read"},
+		{"r", "refresh", "Reload the dashboard"},
+		{"", "today", "Show today's calendar"},
+		{"x", "exit", "Mark all items as read & quit"},
+		{"H", "help", "Show this help"},
+		{"q", "quit", "Quit"},
+	}
+	for _, r := range rows {
+		fmt.Printf("    %s%-8s%s  %s%-13s%s  %s\n",
+			cyan, r.short, reset,
+			cyan, r.long, reset,
+			r.desc)
+	}
+	fmt.Println()
+}
+
+func renderToday(events []Meeting) {
+	fmt.Println()
+	today := time.Now().Local()
+	fmt.Printf("  %s%s%s\n\n", bold, today.Format("Monday, January 2, 2006"), reset)
+
+	if len(events) == 0 {
+		fmt.Printf("  %sNo meetings today%s\n\n", dim, reset)
+		return
+	}
+
+	var allDay, timed []Meeting
+	for _, e := range events {
+		if e.IsAllDay {
+			allDay = append(allDay, e)
+		} else {
+			timed = append(timed, e)
+		}
+	}
+
+	for _, e := range allDay {
+		fmt.Printf("    %sall day%s              %s\n", dim, reset, e.Subject)
+	}
+
+	now := time.Now()
+	var totalDuration time.Duration
+
+	for _, e := range timed {
+		startStr := e.Start.Local().Format("3:04 PM")
+		endStr := e.End.Local().Format("3:04 PM")
+		timeRange := fmt.Sprintf("%8s – %-8s", startStr, endStr)
+
+		subject := e.Subject
+		var style string
+		switch {
+		case e.End.Before(now):
+			style = dim
+		case e.Start.Before(now) || e.Start.Equal(now):
+			style = bold
+			subject = subject + " · now"
+		}
+
+		loc := ""
+		if e.IsOnline {
+			loc = "Online"
+		} else if e.Location != "" {
+			loc = e.Location
+		}
+
+		line := fmt.Sprintf("    %-19s  %-30s  %s", timeRange, subject, loc)
+		line = strings.TrimRight(line, " ")
+
+		if style != "" {
+			fmt.Printf("%s%s%s\n", style, line, reset)
+		} else {
+			fmt.Println(line)
+		}
+
+		totalDuration += e.End.Sub(e.Start)
+	}
+
+	noun := "events"
+	if len(events) == 1 {
+		noun = "event"
+	}
+	fmt.Printf("\n  %s%d %s · %s scheduled%s\n\n",
+		dim, len(events), noun, formatDuration(totalDuration), reset)
+}
+
+func formatDuration(d time.Duration) string {
+	h := int(d.Hours())
+	m := int(d.Minutes()) % 60
+	if h == 0 {
+		return fmt.Sprintf("%dm", m)
+	}
+	if m == 0 {
+		return fmt.Sprintf("%dh", h)
+	}
+	return fmt.Sprintf("%dh %dm", h, m)
 }

@@ -10,7 +10,7 @@ The fastest path on Linux or macOS:
 curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/install.sh | sh
 ```
 
-This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.2.8 sh`.
+This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.3.0 sh`.
 
 On Debian and Ubuntu, add the [Excelano apt repository](https://excelano.com/apt/) once so updates flow through `apt upgrade`:
 
@@ -102,14 +102,15 @@ $ checkin
     2. Jordan R. — "RE: Contract draft"         (1 hour ago · 8:53 AM)
     3. Newsletter — "Weekly digest"             (3 hours ago · 6:48 AM)
 
-  💬 pending chats (2):
+  💬 unread chats (2):
     4. Sam P. — "quick question on timeline"    (32 min ago · 9:20 AM)
     5. Riley T. — "can you check the numbers"   (1 hour ago · 8:51 AM)
 
   Commands:
-    <N>      view message      r<N>     reply
-    d<N>     mark read (done)   x       mark all read & quit
-    r        refresh            q       quit
+    <N>      view               r<N>     reply
+    d<N>     done               r        refresh
+    today    today's calendar   x        exit (mark all read)
+    H        help               q        quit
 
 checkin> 1
   (shows full email body)
@@ -128,6 +129,25 @@ checkin> d3
 checkin> x
   All marked as read.
 ```
+
+Each short command has a full-word equivalent — `reply 4`, `done 3`, `refresh`, `exit`, `quit`, `help`. Type `H` (or `help`) at the prompt for the full reference.
+
+`today` shows the full calendar for the day, with past events dimmed and the current event highlighted:
+
+```
+$ checkin today
+
+  Tuesday, June 9, 2026
+
+      9:00 AM – 9:30 AM    Daily standup            Online
+     10:30 AM – 11:00 AM   Tony 1:1                 Online
+      1:00 PM – 2:00 PM    Project review · now     Online
+      4:00 PM – 5:00 PM    Demo prep                Conf Room A
+
+  4 events · 4h scheduled
+```
+
+The same view is available inside the REPL by typing `today`.
 
 ## Files
 

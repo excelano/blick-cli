@@ -30,7 +30,7 @@ func NewGraphClient(cfg Config, tok *oauth2.Token) (*GraphClient, error) {
 		httpClient:  &http.Client{},
 	}
 
-	// Fetch user ID for filtering (e.g., pending chats)
+	// Fetch user ID for filtering (e.g., unread chats)
 	data, err := g.get("/me", url.Values{"$select": {"id"}})
 	if err != nil {
 		return nil, fmt.Errorf("fetching user profile: %w", err)

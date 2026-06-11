@@ -44,9 +44,13 @@ func main() {
 		os.Exit(0)
 	}
 	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
-		fmt.Println("Usage: checkin")
+		fmt.Println("Usage: checkin [command]")
 		fmt.Println()
 		fmt.Println("Check unread Outlook emails, Teams chats, and your next meeting.")
+		fmt.Println("With no command, opens the interactive dashboard.")
+		fmt.Println()
+		fmt.Println("Commands:")
+		fmt.Println("  today           Show today's calendar and exit")
 		fmt.Println()
 		fmt.Println("Flags:")
 		fmt.Println("  -h, --help      Show this help")
@@ -82,6 +86,11 @@ func main() {
 	}
 
 	maybeHeartbeatPresence(client, cfg)
+
+	if len(os.Args) > 1 && os.Args[1] == "today" {
+		showToday(client)
+		return
+	}
 
 	items := fetchAndDisplay(client, cfg.EnableTeams)
 	if items == nil {
@@ -120,46 +129,142 @@ func main() {
 			continue
 		}
 
-		switch {
-		case input == "q" || input == "quit":
+		cmd, n := parseCommand(input)
+
+		switch cmd {
+		case "quit":
 			return
 
-		case input == "r":
+		case "refresh":
 			items = fetchAndDisplay(client, cfg.EnableTeams)
 			if items == nil {
 				return
 			}
 			renderHelp()
 
-		case input == "x":
+		case "exit":
 			markAllRead(client, items)
 			return
 
-		case strings.HasPrefix(input, "d"):
-			n, err := strconv.Atoi(input[1:])
-			if err != nil || n < 1 || n > len(items) {
+		case "help":
+			renderFullHelp()
+
+		case "today":
+			showToday(client)
+
+		case "view":
+			if n < 1 || n > len(items) {
 				fmt.Printf("  Invalid item: %s\n", input)
 				continue
 			}
-			markRead(client, items[n-1])
+			viewItem(client, items[n-1])
 
-		case strings.HasPrefix(input, "r"):
-			n, err := strconv.Atoi(input[1:])
-			if err != nil || n < 1 || n > len(items) {
+		case "reply":
+			if n < 1 || n > len(items) {
 				fmt.Printf("  Invalid item: %s\n", input)
 				continue
 			}
 			replyTo(client, items[n-1])
 
-		default:
-			n, err := strconv.Atoi(input)
-			if err != nil || n < 1 || n > len(items) {
-				fmt.Printf("  Unknown command. Type %sq%s to quit.\n", cyan, reset)
+		case "done":
+			if n < 1 || n > len(items) {
+				fmt.Printf("  Invalid item: %s\n", input)
 				continue
 			}
-			viewItem(client, items[n-1])
+			markRead(client, items[n-1])
+
+		default:
+			fmt.Printf("  Unknown command. Type %sH%s for help.\n", cyan, reset)
 		}
 	}
+}
+
+// parseCommand normalizes REPL input into a (command, item-number) pair.
+// Item-number is -1 when the command doesn't take one. Returns
+// ("unknown", -1) when the input doesn't map to any command.
+//
+// Short forms map to their long-form equivalents so the dispatcher only
+// has to handle one name per action:
+//   r5, r 5, reply 5  -> ("reply", 5)
+//   d3, d 3, done 3   -> ("done",  3)
+//   7, view 7         -> ("view",  7)
+//   r, refresh        -> ("refresh", -1)
+//   x, exit           -> ("exit",   -1)
+//   q, quit           -> ("quit",   -1)
+//   H, help           -> ("help",   -1)
+//   today             -> ("today",  -1)
+func parseCommand(input string) (string, int) {
+	fields := strings.Fields(input)
+	if len(fields) == 0 {
+		return "unknown", -1
+	}
+	first := fields[0]
+	rest := fields[1:]
+
+	if num, err := strconv.Atoi(first); err == nil {
+		return "view", num
+	}
+
+	if len(first) > 1 {
+		if num, err := strconv.Atoi(first[1:]); err == nil {
+			switch first[0] {
+			case 'r':
+				return "reply", num
+			case 'd':
+				return "done", num
+			}
+		}
+	}
+
+	switch first {
+	case "q":
+		return "quit", -1
+	case "x":
+		return "exit", -1
+	case "H":
+		return "help", -1
+	case "r":
+		if len(rest) == 0 {
+			return "refresh", -1
+		}
+		if num, err := strconv.Atoi(rest[0]); err == nil {
+			return "reply", num
+		}
+		return "unknown", -1
+	case "d":
+		if len(rest) == 0 {
+			return "unknown", -1
+		}
+		if num, err := strconv.Atoi(rest[0]); err == nil {
+			return "done", num
+		}
+		return "unknown", -1
+	}
+
+	switch first {
+	case "view", "reply", "done":
+		if len(rest) == 0 {
+			return "unknown", -1
+		}
+		num, err := strconv.Atoi(rest[0])
+		if err != nil {
+			return "unknown", -1
+		}
+		return first, num
+	case "today", "refresh", "exit", "help", "quit":
+		return first, -1
+	}
+
+	return "unknown", -1
+}
+
+func showToday(client *GraphClient) {
+	events, err := client.TodaysMeetings()
+	if err != nil {
+		fmt.Printf("  %sError: %v%s\n", red, err, reset)
+		return
+	}
+	renderToday(events)
 }
 
 func fetchAndDisplay(client *GraphClient, enableTeams bool) []Item {
@@ -192,7 +297,7 @@ func fetchAndDisplay(client *GraphClient, enableTeams bool) []Item {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			chats, chatErr = client.PendingChats()
+			chats, chatErr = client.UnreadChats()
 		}()
 	}
 
