@@ -167,11 +167,11 @@ func main() {
 		// String-argument commands sit outside parseCommand's (cmd, int)
 		// shape — peel them off before the int-arg dispatcher.
 		fields := strings.Fields(input)
-		if len(fields) > 0 && fields[0] == "email" {
+		if len(fields) > 0 && (fields[0] == "email" || fields[0] == "e") {
 			replEmail(client, fields[1:])
 			continue
 		}
-		if len(fields) > 0 && fields[0] == "chat" {
+		if len(fields) > 0 && (fields[0] == "chat" || fields[0] == "c") {
 			if !cfg.EnableTeams {
 				fmt.Printf("  %sTeams is disabled in your config.%s\n", dim, reset)
 				continue

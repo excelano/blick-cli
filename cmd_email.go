@@ -1,17 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 )
 
 // runEmail handles `blick email <contact...> [--subject "..."]` from the
-// shell. Resolves recipients, opens $EDITOR with an RFC822-shape draft
-// (Subject header + blank line + body), and sends on save.
+// shell. Reads Subject + body inline ed-style — same `.`-sentinel as
+// `reply N` and `chat`. --subject pre-fills the subject so quick
+// one-liners can skip that prompt.
 func runEmail(client *GraphClient, args []string) {
 	var subject string
 	positional := []string{}
@@ -32,17 +33,39 @@ func runEmail(client *GraphClient, args []string) {
 		fmt.Fprintln(os.Stderr, "Usage: blick email <contact> [more contacts...] [--subject \"...\"]")
 		os.Exit(1)
 	}
-	if err := composeAndSend(client, positional, subject); err != nil {
+	if err := composeAndSend(client, positional, subject, newShellComposeReader()); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-// composeAndSend is the shared compose flow. The recipients slice is
-// resolved against the address book; unknown handles are a hard error
-// before the editor opens (so the user fixes a typo without losing the
-// draft they haven't written yet).
-func composeAndSend(client *GraphClient, recipients []string, subject string) error {
+// replEmail is the REPL-side entry. Subject is always prompted (no
+// --subject flag parsing in the REPL).
+func replEmail(client *GraphClient, args []string) {
+	if len(args) == 0 {
+		fmt.Printf("  Usage: %semail <contact> [more contacts...]%s\n", cyan, reset)
+		return
+	}
+	if err := composeAndSend(client, args, "", replComposeReader{}); err != nil {
+		fmt.Printf("  %sError: %v%s\n", red, err, reset)
+	}
+}
+
+// composeReader abstracts the subject + body input for shell vs. REPL
+// callers. Shell shares a single bufio.Scanner across both reads so the
+// two reads don't fight over terminal line buffering; REPL routes
+// through the existing stdinLines + sigCh plumbing so Ctrl-C cancels
+// cleanly instead of killing the process.
+type composeReader interface {
+	readLine(prompt string) (string, bool) // ok=false means cancel/EOF
+	readBody() (string, bool)              // ok=false means cancel
+}
+
+// composeAndSend is the shared compose flow. Resolves recipients,
+// gathers Subject and body via the injected reader, and sends.
+// Unknown handles fail before any prompt opens so the user fixes a typo
+// without losing a draft they haven't typed yet.
+func composeAndSend(client *GraphClient, recipients []string, subject string, reader composeReader) error {
 	store, err := LoadContacts()
 	if err != nil {
 		return err
@@ -65,20 +88,31 @@ func composeAndSend(client *GraphClient, recipients []string, subject string) er
 
 	fmt.Printf("  %sTo:%s %s\n", bold, reset, strings.Join(display, ", "))
 
-	draft, err := editDraft(subject, "")
-	if err != nil {
-		return err
+	if subject == "" {
+		s, ok := reader.readLine(fmt.Sprintf("  %sSubject:%s ", bold, reset))
+		if !ok {
+			fmt.Println("  (cancelled)")
+			return nil
+		}
+		subject = strings.TrimSpace(s)
+	} else {
+		fmt.Printf("  %sSubject:%s %s\n", bold, reset, subject)
 	}
 
-	finalSubject, body := splitDraft(draft)
+	fmt.Printf("  %s(end with `.` on a line by itself, or Ctrl-C to cancel)%s\n", dim, reset)
+	body, ok := reader.readBody()
+	if !ok {
+		fmt.Println("  (cancelled)")
+		return nil
+	}
 	body = strings.TrimRight(body, " \t\n")
 	if body == "" {
 		fmt.Println("  (empty body — not sent)")
 		return nil
 	}
 
-	if err := client.SendMail(addrs, finalSubject, body); err != nil {
-		path, saveErr := saveDraftCopy(addrs, finalSubject, body)
+	if err := client.SendMail(addrs, subject, body); err != nil {
+		path, saveErr := saveDraftCopy(addrs, subject, body)
 		if saveErr == nil {
 			fmt.Fprintf(os.Stderr, "  %sDraft saved to %s%s\n", dim, path, reset)
 		}
@@ -88,73 +122,84 @@ func composeAndSend(client *GraphClient, recipients []string, subject string) er
 	return nil
 }
 
-// editDraft writes a Subject-header + body skeleton to a temp file, opens
-// $EDITOR on it, and returns the post-edit contents. Falls back to vi
-// then ved. Subject is pre-filled when the caller supplied --subject.
-func editDraft(subject, body string) (string, error) {
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		if _, err := exec.LookPath("vi"); err == nil {
-			editor = "vi"
-		} else if _, err := exec.LookPath("ved"); err == nil {
-			editor = "ved"
-		} else {
-			return "", fmt.Errorf("no editor available — set $EDITOR")
-		}
-	}
-
-	skeleton := fmt.Sprintf("Subject: %s\n\n%s", subject, body)
-	tmp, err := os.CreateTemp("", "blick-email-*.txt")
-	if err != nil {
-		return "", err
-	}
-	path := tmp.Name()
-	if _, err := tmp.WriteString(skeleton); err != nil {
-		tmp.Close()
-		return "", err
-	}
-	tmp.Close()
-
-	cmd := exec.Command(editor, path)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("editor %s: %w", filepath.Base(editor), err)
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	_ = os.Remove(path)
-	return string(data), nil
+// shellComposeReader reuses one bufio.Scanner across subject + body
+// reads. Two scanners on os.Stdin can race on terminal line buffers
+// (the first reads ahead, the second sees nothing) — sharing avoids
+// that.
+type shellComposeReader struct {
+	scanner *bufio.Scanner
 }
 
-// splitDraft parses the post-edit buffer back into (subject, body).
-// The first `Subject:` header line wins; everything after the first blank
-// line (or after the header if no blank line is present) is the body.
-// A buffer with no Subject header is treated as all-body, empty subject.
-func splitDraft(s string) (string, string) {
-	s = strings.ReplaceAll(s, "\r\n", "\n")
-	lines := strings.Split(s, "\n")
+func newShellComposeReader() *shellComposeReader {
+	return &shellComposeReader{scanner: bufio.NewScanner(os.Stdin)}
+}
 
-	subject := ""
-	bodyStart := 0
-	if len(lines) > 0 && strings.HasPrefix(strings.ToLower(lines[0]), "subject:") {
-		subject = strings.TrimSpace(lines[0][len("subject:"):])
-		bodyStart = 1
-		if bodyStart < len(lines) && strings.TrimSpace(lines[bodyStart]) == "" {
-			bodyStart++
+func (r *shellComposeReader) readLine(prompt string) (string, bool) {
+	fmt.Print(prompt)
+	if !r.scanner.Scan() {
+		return "", false
+	}
+	return r.scanner.Text(), true
+}
+
+func (r *shellComposeReader) readBody() (string, bool) {
+	var lines []string
+	for {
+		fmt.Printf("  %s> %s", cyan, reset)
+		if !r.scanner.Scan() {
+			break
+		}
+		line := r.scanner.Text()
+		if line == "." {
+			break
+		}
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, "\n"), true
+}
+
+// replComposeReader routes subject + body through the REPL's shared
+// stdinLines + sigCh so Ctrl-C cancels the compose rather than killing
+// the process.
+type replComposeReader struct{}
+
+func (replComposeReader) readLine(prompt string) (string, bool) {
+	fmt.Print(prompt)
+	select {
+	case line, ok := <-stdinLines:
+		if !ok {
+			return "", false
+		}
+		return line, true
+	case <-sigCh:
+		fmt.Println()
+		return "", false
+	}
+}
+
+func (replComposeReader) readBody() (string, bool) {
+	var lines []string
+	for {
+		fmt.Printf("  %s> %s", cyan, reset)
+		select {
+		case line, ok := <-stdinLines:
+			if !ok {
+				return "", false
+			}
+			if line == "." {
+				return strings.Join(lines, "\n"), true
+			}
+			lines = append(lines, line)
+		case <-sigCh:
+			fmt.Println()
+			return "", false
 		}
 	}
-	body := strings.Join(lines[bodyStart:], "\n")
-	return subject, body
 }
 
 // saveDraftCopy writes the unsent draft to ~/.config/blick/drafts/ with
-// the recipient list and timestamp in the filename, so a transient Graph
-// failure doesn't lose work. Returns the path written.
+// a timestamped filename so a transient Graph failure doesn't lose
+// work. Returns the path written.
 func saveDraftCopy(to []string, subject, body string) (string, error) {
 	dir := filepath.Join(configDir(), "drafts")
 	if err := os.MkdirAll(dir, 0700); err != nil {
@@ -169,18 +214,3 @@ func saveDraftCopy(to []string, subject, body string) (string, error) {
 	}
 	return path, nil
 }
-
-// replEmail is the REPL-side entry: takes an already-tokenized argument
-// list (one or more recipient handles) and runs the compose flow. No
-// --subject parsing here — REPL users get the Subject header inline in
-// the editor buffer.
-func replEmail(client *GraphClient, args []string) {
-	if len(args) == 0 {
-		fmt.Printf("  Usage: %semail <contact> [more contacts...]%s\n", cyan, reset)
-		return
-	}
-	if err := composeAndSend(client, args, ""); err != nil {
-		fmt.Printf("  %sError: %v%s\n", red, err, reset)
-	}
-}
-
