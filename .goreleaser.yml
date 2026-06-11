@@ -10,9 +10,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: checkin
+  - id: blick
     main: .
-    binary: checkin
+    binary: blick
     env:
       - CGO_ENABLED=0
     goos:
@@ -32,8 +32,8 @@ builds:
       - -X main.date={{.Date}}
 
 archives:
-  - id: checkin
-    name_template: "checkin_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - id: blick
+    name_template: "blick_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
         formats: ["zip"]
@@ -44,17 +44,17 @@ archives:
       - setup.sh
 
 nfpms:
-  - id: checkin
-    package_name: checkin
+  - id: blick
+    package_name: blick
     file_name_template: "{{ .ConventionalFileName }}"
     maintainer: David M. Anderson <david.anderson@excelano.com>
     description: |
-      Microsoft 365 check-in tool for the terminal.
-      Single-screen status panel: unread Outlook mail, pending Teams chats,
-      next meeting. Reply, mark-read, mark-all-read, refresh inline. Pure
-      Go, device-code OAuth, requires your own Azure app registration
-      (see /usr/share/doc/checkin/setup.sh).
-    homepage: https://github.com/excelano/checkin-cli
+      Microsoft 365 status panel for the terminal.
+      Single-screen view: unread Outlook mail, unread Teams chats, next
+      meeting. Reply, mark-read, mark-all-read, refresh, today's calendar
+      inline. Pure Go, device-code OAuth, requires your own Azure app
+      registration (see /usr/share/doc/blick/setup.sh).
+    homepage: https://github.com/excelano/blick-cli
     license: MIT
     formats:
       - deb
@@ -63,13 +63,13 @@ nfpms:
     bindir: /usr/bin
     contents:
       - src: ./LICENSE
-        dst: /usr/share/doc/checkin/copyright
+        dst: /usr/share/doc/blick/copyright
       - src: ./README.md
-        dst: /usr/share/doc/checkin/README.md
+        dst: /usr/share/doc/blick/README.md
       - src: ./SECURITY.md
-        dst: /usr/share/doc/checkin/SECURITY.md
+        dst: /usr/share/doc/blick/SECURITY.md
       - src: ./setup.sh
-        dst: /usr/share/doc/checkin/setup.sh
+        dst: /usr/share/doc/blick/setup.sh
 
 checksum:
   name_template: "checksums.txt"

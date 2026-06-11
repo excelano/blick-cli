@@ -1,19 +1,19 @@
 #!/bin/sh
-# checkin installer — fetches the latest release binary for the host platform
+# blick installer — fetches the latest release binary for the host platform
 # and drops it into /usr/local/bin (or ~/.local/bin if /usr/local/bin is not
 # writable). POSIX sh, no bash extensions.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/install.sh | sh
 #
 # Environment variables:
-#   CHECKIN_INSTALL_DIR   Override install directory (e.g. /opt/bin or $HOME/bin)
-#   CHECKIN_VERSION       Install a specific release tag (e.g. v0.1.0) instead of latest
+#   BLICK_INSTALL_DIR   Override install directory (e.g. /opt/bin or $HOME/bin)
+#   BLICK_VERSION       Install a specific release tag (e.g. v0.1.0) instead of latest
 
 set -eu
 
-REPO="excelano/checkin-cli"
-BIN="checkin"
+REPO="excelano/blick-cli"
+BIN="blick"
 
 say() { printf '%s\n' "$*" >&2; }
 err() { say "error: $*"; exit 1; }
@@ -33,7 +33,7 @@ detect_platform() {
 	ARCH=$(uname -m)
 	case "$OS" in
 		linux|darwin) ;;
-		*) err "unsupported OS: $OS (checkin ships linux + darwin binaries)";;
+		*) err "unsupported OS: $OS (blick ships linux + darwin binaries)";;
 	esac
 	case "$ARCH" in
 		x86_64|amd64) ARCH=amd64 ;;
@@ -44,9 +44,9 @@ detect_platform() {
 }
 
 resolve_version() {
-	if [ -n "${CHECKIN_VERSION:-}" ]; then
-		VERSION="$CHECKIN_VERSION"
-		say "Installing checkin $VERSION (pinned via CHECKIN_VERSION)"
+	if [ -n "${BLICK_VERSION:-}" ]; then
+		VERSION="$BLICK_VERSION"
+		say "Installing blick $VERSION (pinned via BLICK_VERSION)"
 		return
 	fi
 	# Resolve the latest tag via the GitHub API. The web /releases/latest
@@ -58,7 +58,7 @@ resolve_version() {
 	if [ -z "${VERSION:-}" ]; then
 		err "could not resolve latest release tag from GitHub"
 	fi
-	say "Installing checkin $VERSION (latest)"
+	say "Installing blick $VERSION (latest)"
 }
 
 detect_existing() {
@@ -71,8 +71,8 @@ detect_existing() {
 }
 
 pick_install_dir() {
-	if [ -n "${CHECKIN_INSTALL_DIR:-}" ]; then
-		INSTALL_DIR="$CHECKIN_INSTALL_DIR"
+	if [ -n "${BLICK_INSTALL_DIR:-}" ]; then
+		INSTALL_DIR="$BLICK_INSTALL_DIR"
 	elif [ -n "$EXISTING_DIR" ]; then
 		INSTALL_DIR="$EXISTING_DIR"
 		say "Existing install at $EXISTING_PATH — upgrading in place"
@@ -87,7 +87,7 @@ pick_install_dir() {
 			err "existing install at $EXISTING_PATH is not writable; re-run as
        curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install.sh | sudo sh"
 		fi
-		err "$INSTALL_DIR is not writable; either set CHECKIN_INSTALL_DIR to a
+		err "$INSTALL_DIR is not writable; either set BLICK_INSTALL_DIR to a
        writable directory, or re-run as
        curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install.sh | sudo sh"
 	fi
@@ -100,7 +100,7 @@ pick_install_dir() {
 
 download_and_install() {
 	VERSION_NUM=${VERSION#v}
-	ARCHIVE="checkin_${VERSION_NUM}_${PLATFORM}.tar.gz"
+	ARCHIVE="blick_${VERSION_NUM}_${PLATFORM}.tar.gz"
 	URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
 	CHECKSUMS_URL="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
 
@@ -143,21 +143,21 @@ download_and_install() {
 
 post_install_message() {
 	say ""
-	say "checkin installed to $INSTALL_DIR/$BIN"
+	say "blick installed to $INSTALL_DIR/$BIN"
 	case ":$PATH:" in
 		*":$INSTALL_DIR:"*) ;;
 		*) say "Note: $INSTALL_DIR is not on your PATH. Add it to your shell rc:"
 		   say "    export PATH=\"$INSTALL_DIR:\$PATH\"" ;;
 	esac
-	if [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/checkin/config.json" ]; then
+	if [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/blick/config.json" ]; then
 		say ""
-		say "Next: create ~/.config/checkin/config.json with your Azure app"
+		say "Next: create ~/.config/blick/config.json with your Azure app"
 		say "registration. Run setup.sh from the release archive, or see the"
 		say "README at https://github.com/${REPO}#setup"
 	fi
 	say ""
 	say "Try it:"
-	say "    checkin --help"
+	say "    blick --help"
 }
 
 detect_platform

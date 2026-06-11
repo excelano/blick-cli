@@ -1,29 +1,29 @@
 #!/bin/sh
-# checkin uninstaller — finds and removes the checkin binary, with an
+# blick uninstaller — finds and removes the blick binary, with an
 # optional follow-up step to remove the token cache and config at
-# ~/.config/checkin/. POSIX sh, no bash extensions.
+# ~/.config/blick/. POSIX sh, no bash extensions.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/uninstall.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/uninstall.sh | sh
 #
 # Environment variables:
-#   CHECKIN_UNINSTALL_YES=1  Skip the interactive confirmation (assume yes)
-#   CHECKIN_PURGE=1          Also remove ~/.config/checkin/ (token cache and config)
+#   BLICK_UNINSTALL_YES=1  Skip the interactive confirmation (assume yes)
+#   BLICK_PURGE=1          Also remove ~/.config/blick/ (token cache and config)
 
 set -eu
 
-BIN="checkin"
+BIN="blick"
 
 say() { printf '%s\n' "$*" >&2; }
 err() { say "error: $*"; exit 1; }
 
 read_yes() {
 	prompt="$1"
-	if [ "${CHECKIN_UNINSTALL_YES:-0}" = "1" ]; then
+	if [ "${BLICK_UNINSTALL_YES:-0}" = "1" ]; then
 		return 0
 	fi
 	if [ ! -t 0 ] && [ ! -e /dev/tty ]; then
-		err "no terminal available for confirmation; re-run with CHECKIN_UNINSTALL_YES=1 to skip the prompt"
+		err "no terminal available for confirmation; re-run with BLICK_UNINSTALL_YES=1 to skip the prompt"
 	fi
 	printf '%s [y/N]: ' "$prompt" >&2
 	if [ -e /dev/tty ]; then
@@ -68,13 +68,13 @@ if [ -n "$LEFTOVER" ]; then
 	say "Re-run this uninstaller to remove it, or remove it manually."
 fi
 
-# Optional state cleanup. Token cache and config live in ~/.config/checkin/.
-# Only remove if CHECKIN_PURGE=1 was passed or the user confirms — re-running
-# checkin after a fresh install with the same config keeps the token, which
+# Optional state cleanup. Token cache and config live in ~/.config/blick/.
+# Only remove if BLICK_PURGE=1 was passed or the user confirms — re-running
+# blick after a fresh install with the same config keeps the token, which
 # saves a device-code round-trip.
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/checkin"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/blick"
 if [ -d "$CONFIG_DIR" ]; then
-	if [ "${CHECKIN_PURGE:-0}" = "1" ] || read_yes "Also remove $CONFIG_DIR (token cache and config)?"; then
+	if [ "${BLICK_PURGE:-0}" = "1" ] || read_yes "Also remove $CONFIG_DIR (token cache and config)?"; then
 		rm -rf "$CONFIG_DIR"
 		say "Removed $CONFIG_DIR"
 	else

@@ -14,9 +14,24 @@ type Config struct {
 	PresenceHeartbeat bool   `json:"presence_heartbeat"`
 }
 
+// configDir returns the directory where blick keeps its config and token
+// cache. If a legacy ~/.config/checkin/ directory exists from before the
+// rename and ~/.config/blick/ does not, the legacy directory is moved
+// in-place — silent, one-time, transparent to the user. Migration failures
+// fall back to the legacy path so existing users keep working.
 func configDir() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "checkin")
+	blickDir := filepath.Join(home, ".config", "blick")
+	legacyDir := filepath.Join(home, ".config", "checkin")
+
+	if _, err := os.Stat(blickDir); os.IsNotExist(err) {
+		if _, err := os.Stat(legacyDir); err == nil {
+			if renameErr := os.Rename(legacyDir, blickDir); renameErr != nil {
+				return legacyDir
+			}
+		}
+	}
+	return blickDir
 }
 
 func loadConfig() (Config, error) {

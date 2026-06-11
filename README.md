@@ -1,4 +1,4 @@
-# checkin
+# blick
 
 Check unread Outlook emails, Teams chats, and your next meeting from the terminal.
 
@@ -7,51 +7,51 @@ Check unread Outlook emails, Teams chats, and your next meeting from the termina
 The fastest path on Linux or macOS:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/install.sh | sh
 ```
 
-This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `CHECKIN_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `CHECKIN_VERSION=v0.3.1 sh`.
+This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `BLICK_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `BLICK_VERSION=v0.4.0 sh`.
 
 On Debian and Ubuntu, add the [Excelano apt repository](https://excelano.com/apt/) once so updates flow through `apt upgrade`:
 
 ```sh
 curl -fsSL https://excelano.com/apt/setup.sh | sudo sh
-sudo apt install checkin
+sudo apt install blick
 ```
 
-To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/uninstall.sh | sh` (or `sudo apt remove checkin` if installed via apt).
+To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/uninstall.sh | sh` (or `sudo apt remove blick` if installed via apt).
 
 ### Build from source
 
 ```bash
-git clone https://github.com/excelano/checkin-cli
-cd checkin-cli
-go build -o checkin .
-mv checkin ~/bin/
+git clone https://github.com/excelano/blick-cli
+cd blick-cli
+go build -o blick .
+mv blick ~/bin/
 ```
 
 Requires Go 1.25+.
 
 ## Setup
 
-You'll need an Azure app registration before `checkin` can authenticate. Both options below assume you've already installed the binary.
+You'll need an Azure app registration before `blick` can authenticate. Both options below assume you've already installed the binary.
 
 ### Option A: Automated (requires Azure CLI)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/excelano/checkin-cli/main/setup.sh -o setup.sh
+curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/setup.sh -o setup.sh
 chmod +x setup.sh
 az login
 ./setup.sh
 ```
 
-(Or if you installed via apt, `setup.sh` ships at `/usr/share/doc/checkin/setup.sh`.)
+(Or if you installed via apt, `setup.sh` ships at `/usr/share/doc/blick/setup.sh`.)
 
 ### Option B: Manual (Azure portal)
 
 1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations
 2. **New registration**
-   - Name: `checkin`
+   - Name: `blick`
    - Supported account types: Accounts in this organizational directory only
 3. **Authentication** → Add a platform → Mobile and desktop applications
    - Check `https://login.microsoftonline.com/common/oauth2/nativeclient`
@@ -69,8 +69,8 @@ az login
 Create the config file:
 
 ```bash
-mkdir -p ~/.config/checkin
-cat > ~/.config/checkin/config.json << 'EOF'
+mkdir -p ~/.config/blick
+cat > ~/.config/blick/config.json << 'EOF'
 {
     "client_id": "YOUR_CLIENT_ID_HERE",
     "tenant_id": "YOUR_TENANT_ID_HERE",
@@ -88,12 +88,12 @@ Most enterprise tenants require admin consent for all permissions. Ask your IT a
 az ad app permission grant --id YOUR_CLIENT_ID --api 00000003-0000-0000-c000-000000000000 --scope "User.Read Mail.ReadWrite Mail.Send Calendars.Read Presence.ReadWrite Chat.ReadWrite"
 ```
 
-Without admin consent, checkin won't be able to authenticate at all in locked-down tenants. If only `Chat.ReadWrite` is blocked, set `"enable_teams": false` in config to use email and calendar without Teams. To opt out of presence updates, set `"presence_heartbeat": false`.
+Without admin consent, blick won't be able to authenticate at all in locked-down tenants. If only `Chat.ReadWrite` is blocked, set `"enable_teams": false` in config to use email and calendar without Teams. To opt out of presence updates, set `"presence_heartbeat": false`.
 
 ## Usage
 
 ```
-$ checkin
+$ blick
 
   📅 Standup with Tony — in 47 min · 10:30 AM — Online
 
@@ -112,10 +112,10 @@ $ checkin
     t        show today         x        exit (mark all read)
     H        help               q        quit
 
-checkin> 1
+blick> 1
   (shows full email body)
 
-checkin> r4
+blick> r4
   Reply in Sam P.:
   (end with `.` on a line by itself, or Ctrl-C to cancel)
   > Should be ready by EOD tomorrow.
@@ -123,10 +123,10 @@ checkin> r4
   > .
   Sent.
 
-checkin> d3
+blick> d3
   Marked as read: Weekly digest
 
-checkin> x
+blick> x
   All marked as read.
 ```
 
@@ -135,7 +135,7 @@ Each short command has a full-word equivalent — `reply 4`, `done 3`, `refresh`
 `t` (or `today`) shows the full calendar for the day, with past events dimmed and the current event highlighted:
 
 ```
-$ checkin today
+$ blick today
 
   Tuesday, June 9, 2026
 
@@ -151,8 +151,8 @@ The same view is available inside the REPL by typing `today`.
 
 ## Files
 
-- `~/.config/checkin/config.json` — client ID, tenant ID, and feature flags
-- `~/.config/checkin/token.json` — cached OAuth token (auto-created)
+- `~/.config/blick/config.json` — client ID, tenant ID, and feature flags
+- `~/.config/blick/token.json` — cached OAuth token (auto-created)
 
 ## Permissions
 
@@ -167,8 +167,8 @@ The same view is available inside the REPL by typing `today`.
 
 ## Presence heartbeat
 
-When you run `checkin`, the tool reads your current Microsoft 365 presence. If
-you're showing as Away — typically because Teams' idle timer fired — checkin
+When you run `blick`, the tool reads your current Microsoft 365 presence. If
+you're showing as Away — typically because Teams' idle timer fired — blick
 registers itself as an active session with availability `Available` for one
 hour. Subsequent runs reset the hour.
 

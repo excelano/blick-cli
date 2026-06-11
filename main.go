@@ -40,11 +40,11 @@ func main() {
 		os.Args = append(os.Args[:1], os.Args[2:]...)
 	}
 	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-V") {
-		fmt.Printf("checkin %s (%s, %s)\n", version, commit, date)
+		fmt.Printf("blick %s (%s, %s)\n", version, commit, date)
 		os.Exit(0)
 	}
 	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
-		fmt.Println("Usage: checkin [command]")
+		fmt.Println("Usage: blick [command]")
 		fmt.Println()
 		fmt.Println("Check unread Outlook emails, Teams chats, and your next meeting.")
 		fmt.Println("With no command, opens the interactive dashboard.")
@@ -57,7 +57,7 @@ func main() {
 		fmt.Println("  -V, --version   Show version")
 		fmt.Println("      --debug     Verbose Graph request logging")
 		fmt.Println()
-		fmt.Println("Config: ~/.config/checkin/config.json")
+		fmt.Println("Config: ~/.config/blick/config.json")
 		fmt.Println("  {\"client_id\": \"...\", \"tenant_id\": \"...\"}")
 		fmt.Println()
 		fmt.Println("See README.md for Azure AD app registration.")
@@ -111,7 +111,7 @@ func main() {
 	}()
 
 	for {
-		fmt.Printf("%scheckin>%s ", bold, reset)
+		fmt.Printf("%sblick>%s ", bold, reset)
 		var input string
 		select {
 		case line, ok := <-stdinLines:

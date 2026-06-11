@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Register an Azure AD app for checkin using the Azure CLI.
+# Register an Azure AD app for blick using the Azure CLI.
 # Requires: az cli installed and logged in (az login)
 #
 # Permission GUIDs (Microsoft Graph, delegated):
@@ -19,7 +19,7 @@ if ! command -v az &> /dev/null; then
     echo "or register the app manually in the Azure portal:"
     echo ""
     echo "  1. Go to https://portal.azure.com → Azure Active Directory → App registrations"
-    echo "  2. New registration → Name: 'checkin' → Accounts in this org only"
+    echo "  2. New registration → Name: 'blick' → Accounts in this org only"
     echo "  3. Under Authentication → Add platform → Mobile and desktop"
     echo "     → Check 'https://login.microsoftonline.com/common/oauth2/nativeclient'"
     echo "     → Enable 'Allow public client flows' → Save"
@@ -33,7 +33,7 @@ if ! command -v az &> /dev/null; then
     echo "       Optional (requires admin consent):"
     echo "       - Chat.ReadWrite"
     echo "  5. Copy Application (client) ID and Directory (tenant) ID into:"
-    echo "     ~/.config/checkin/config.json"
+    echo "     ~/.config/blick/config.json"
     echo ""
     exit 1
 fi
@@ -78,7 +78,7 @@ fi
 
 echo "Registering app..."
 APP_ID=$(az ad app create \
-    --display-name "checkin" \
+    --display-name "blick" \
     --is-fallback-public-client true \
     --public-client-redirect-uris "https://login.microsoftonline.com/common/oauth2/nativeclient" \
     --required-resource-accesses "$PERMISSIONS" \
@@ -86,8 +86,8 @@ APP_ID=$(az ad app create \
 
 echo "App registered: $APP_ID"
 
-mkdir -p "$HOME/.config/checkin"
-cat > "$HOME/.config/checkin/config.json" << EOF
+mkdir -p "$HOME/.config/blick"
+cat > "$HOME/.config/blick/config.json" << EOF
 {
     "client_id": "$APP_ID",
     "tenant_id": "$TENANT_ID",
@@ -96,7 +96,7 @@ cat > "$HOME/.config/checkin/config.json" << EOF
 }
 EOF
 
-echo "Config written to ~/.config/checkin/config.json"
+echo "Config written to ~/.config/blick/config.json"
 
 if [ "$ENABLE_TEAMS" = true ]; then
     echo ""
@@ -106,4 +106,4 @@ if [ "$ENABLE_TEAMS" = true ]; then
 fi
 
 echo ""
-echo "You can now run: checkin"
+echo "You can now run: blick"
