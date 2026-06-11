@@ -46,9 +46,9 @@ func (e calendarEvent) toMeeting() Meeting {
 	start, _ := time.ParseInLocation("2006-01-02T15:04:05.0000000", e.Start.DateTime, loc)
 	end, _ := time.ParseInLocation("2006-01-02T15:04:05.0000000", e.End.DateTime, loc)
 	return Meeting{
-		Subject:   e.Subject,
+		Subject:   flatten(e.Subject, " "),
 		Organizer: e.Organizer.EmailAddress.Name,
-		Location:  e.Location.DisplayName,
+		Location:  flatten(e.Location.DisplayName, ", "),
 		Start:     start,
 		End:       end,
 		IsOnline:  e.IsOnlineMeeting,

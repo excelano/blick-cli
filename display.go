@@ -92,6 +92,23 @@ func untilTime(t time.Time) string {
 	}
 }
 
+// flatten collapses a multi-line string onto one line by splitting on
+// newlines, trimming each segment, and rejoining with sep. Outlook returns
+// addresses in location.displayName as "Street\nCity, ST Zip\nCountry";
+// passing sep=", " produces a properly punctuated single-line address.
+// Use sep=" " for free-form text like meeting titles.
+func flatten(s, sep string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	var out []string
+	for _, p := range strings.Split(s, "\n") {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return strings.Join(out, sep)
+}
+
 func truncate(s string, maxLen int) string {
 	// Replace newlines with spaces for single-line display
 	s = strings.ReplaceAll(s, "\n", " ")
