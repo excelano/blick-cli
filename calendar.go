@@ -14,6 +14,7 @@ type Meeting struct {
 	End       time.Time
 	IsOnline  bool
 	IsAllDay  bool
+	JoinURL   string
 }
 
 type calendarEvent struct {
@@ -36,6 +37,9 @@ type calendarEvent struct {
 	} `json:"end"`
 	IsOnlineMeeting bool `json:"isOnlineMeeting"`
 	IsAllDay        bool `json:"isAllDay"`
+	OnlineMeeting   struct {
+		JoinURL string `json:"joinUrl"`
+	} `json:"onlineMeeting"`
 }
 
 func (e calendarEvent) toMeeting() Meeting {
@@ -53,6 +57,7 @@ func (e calendarEvent) toMeeting() Meeting {
 		End:       end,
 		IsOnline:  e.IsOnlineMeeting,
 		IsAllDay:  e.IsAllDay,
+		JoinURL:   e.OnlineMeeting.JoinURL,
 	}
 }
 
@@ -65,7 +70,7 @@ func (g *GraphClient) NextMeeting() (*Meeting, error) {
 		"endDateTime":   {endOfDay.UTC().Format(time.RFC3339)},
 		"$top":          {"1"},
 		"$orderby":      {"start/dateTime"},
-		"$select":       {"subject,organizer,location,start,end,isOnlineMeeting,isAllDay"},
+		"$select":       {"subject,organizer,location,start,end,isOnlineMeeting,isAllDay,onlineMeeting"},
 	}
 
 	data, err := g.get("/me/calendarView", query)
@@ -103,7 +108,7 @@ func (g *GraphClient) TodaysMeetings() ([]Meeting, error) {
 		"endDateTime":   {end.UTC().Format(time.RFC3339)},
 		"$orderby":      {"start/dateTime"},
 		"$top":          {"100"},
-		"$select":       {"subject,organizer,location,start,end,isOnlineMeeting,isAllDay"},
+		"$select":       {"subject,organizer,location,start,end,isOnlineMeeting,isAllDay,onlineMeeting"},
 	}
 
 	data, err := g.get("/me/calendarView", query)

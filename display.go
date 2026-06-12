@@ -205,12 +205,11 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 
 func renderHelp() {
 	rows := [][4]string{
-		{"<N>", "view", "r<N>", "reply-all"},
-		{"d<N>", "done", "r", "refresh"},
-		{"t", "show today", "x", "exit (mark all read)"},
-		{"H", "help", "q", "quit"},
+		{"<N>", "view", "r", "refresh"},
+		{"<N>r", "reply-all", "q", "quit"},
+		{"<N>d", "done", "H", "help"},
 	}
-	fmt.Printf("  %sCommands:%s\n", bold, reset)
+	fmt.Printf("  %sCommon commands:%s\n", bold, reset)
 	for _, r := range rows {
 		fmt.Printf("    %s%-8s%s %-18s %s%-8s%s %s\n",
 			cyan, r[0], reset, r[1],
@@ -225,12 +224,13 @@ func renderFullHelp() {
 	fmt.Printf("    %s%-8s  %-13s  %s%s\n", dim, "Short", "Long", "What it does", reset)
 	rows := []struct{ short, long, desc string }{
 		{"<N>", "view N", "Open the Nth item from the list"},
-		{"r<N>", "reply N", "Reply-all to the Nth item (ed-style editor)"},
-		{"d<N>", "done N", "Mark the Nth item as read"},
+		{"<N>r", "reply N", "Reply-all to the Nth item (ed-style editor)"},
+		{"<N>d", "done N", "Mark the Nth item as read"},
 		{"e <c>", "email <c>", "Compose a new message to contact <c>"},
 		{"c <c>", "chat <c>", "Send a Teams chat to contact <c>"},
 		{"r", "refresh", "Reload the dashboard"},
 		{"t", "today", "Show today's calendar"},
+		{"j", "join", "Open the current or next online meeting in the browser"},
 		{"x", "exit", "Mark all items as read & quit"},
 		{"H", "help", "Show this help"},
 		{"q", "quit", "Quit"},

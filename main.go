@@ -51,6 +51,7 @@ func main() {
 		fmt.Println()
 		fmt.Println("Commands:")
 		fmt.Println("  today                          Show today's calendar and exit")
+		fmt.Println("  join                           Open the current or next online meeting")
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
 		fmt.Println("  email <contact> [--subject]    Compose and send a message")
 		fmt.Println("  chat <contact>                 Send a Teams chat message")
@@ -105,6 +106,11 @@ func main() {
 
 	if len(os.Args) > 1 && os.Args[1] == "today" {
 		showToday(client)
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "join" {
+		runJoin(client)
 		return
 	}
 
@@ -203,6 +209,9 @@ func main() {
 		case "today":
 			showToday(client)
 
+		case "join":
+			replJoin(client)
+
 		case "view":
 			if n < 1 || n > len(items) {
 				fmt.Printf("  Invalid item: %s\n", input)
@@ -256,6 +265,24 @@ func parseCommand(input string) (string, int) {
 		return "view", num
 	}
 
+	// ed/ved-style: address first, then action letter — e.g. 5r, 5d.
+	// This is the canonical form shown in the overview help.
+	if len(first) > 1 {
+		last := first[len(first)-1]
+		if last == 'r' || last == 'd' {
+			if num, err := strconv.Atoi(first[:len(first)-1]); err == nil {
+				switch last {
+				case 'r':
+					return "reply", num
+				case 'd':
+					return "done", num
+				}
+			}
+		}
+	}
+
+	// Legacy: letter first, then number — e.g. r5, d5. Still accepted
+	// so muscle memory from before the ed-style flip keeps working.
 	if len(first) > 1 {
 		if num, err := strconv.Atoi(first[1:]); err == nil {
 			switch first[0] {
@@ -276,6 +303,8 @@ func parseCommand(input string) (string, int) {
 		return "help", -1
 	case "t":
 		return "today", -1
+	case "j":
+		return "join", -1
 	case "r":
 		if len(rest) == 0 {
 			return "refresh", -1
@@ -304,7 +333,7 @@ func parseCommand(input string) (string, int) {
 			return "unknown", -1
 		}
 		return first, num
-	case "today", "refresh", "exit", "help", "quit":
+	case "today", "refresh", "exit", "help", "quit", "join":
 		return first, -1
 	}
 
