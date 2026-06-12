@@ -195,21 +195,45 @@ func (g *GraphClient) GetChatMessages(chatID string, count int) ([]ChatMessage, 
 // LookupUserID resolves a Graph user's object ID from their primary email
 // or UPN. Required for composing a new 1:1 chat — POST /chats wants the
 // recipient's object ID, not their address.
+//
+// Uses /me/people (covered by the People.Read scope we already consent
+// to) rather than /users/{email} (which would need User.ReadBasic.All
+// for any user other than self). Person.id is the AAD user object ID
+// for in-tenant users — the same value EnsureOneOnOneChat needs for
+// the @odata.bind URI. Works for anyone in the signed-in user's
+// relevance graph; users with no prior interaction won't be found.
 func (g *GraphClient) LookupUserID(email string) (string, error) {
-	data, err := g.get(fmt.Sprintf("/users/%s", url.PathEscape(email)), url.Values{"$select": {"id"}})
+	query := url.Values{
+		"$search": {fmt.Sprintf("%q", email)},
+		"$select": {"id,scoredEmailAddresses"},
+		"$top":    {"10"},
+	}
+	data, err := g.get("/me/people", query)
 	if err != nil {
 		return "", err
 	}
-	var u struct {
-		ID string `json:"id"`
+	var result struct {
+		Value []struct {
+			ID                   string `json:"id"`
+			ScoredEmailAddresses []struct {
+				Address string `json:"address"`
+			} `json:"scoredEmailAddresses"`
+		} `json:"value"`
 	}
-	if err := json.Unmarshal(data, &u); err != nil {
+	if err := json.Unmarshal(data, &result); err != nil {
 		return "", err
 	}
-	if u.ID == "" {
-		return "", fmt.Errorf("no Graph user for %s", email)
+	for _, p := range result.Value {
+		if p.ID == "" {
+			continue
+		}
+		for _, a := range p.ScoredEmailAddresses {
+			if strings.EqualFold(a.Address, email) {
+				return p.ID, nil
+			}
+		}
 	}
-	return u.ID, nil
+	return "", fmt.Errorf("no match for %s in your frequent contacts (/me/people) — email or chat them once via Outlook/Teams so they appear in the relevance graph, then try again", email)
 }
 
 // EnsureOneOnOneChat creates a 1:1 chat between the signed-in user and
