@@ -101,24 +101,24 @@ func composeAndSendChat(client *GraphClient, who string, readBody func() (string
 	return nil
 }
 
-// shellReadBody reads body lines from os.Stdin until a "." sentinel or
-// EOF. Returns (text, true) on normal end, ("", false) only on Ctrl-D
-// with no input at all — empty body is treated as cancel by the caller.
+// shellReadBody reads body lines from os.Stdin until a "." sentinel.
+// Ctrl-D / EOF is cancel — anything typed before it is discarded so the
+// shell path matches the REPL's Ctrl-C semantics and the documented `.`
+// submit protocol.
 func shellReadBody() (string, bool) {
 	scanner := bufio.NewScanner(os.Stdin)
 	var lines []string
 	for {
 		fmt.Printf("  %s> %s", cyan, reset)
 		if !scanner.Scan() {
-			break
+			return "", false
 		}
 		line := scanner.Text()
 		if line == "." {
-			break
+			return strings.Join(lines, "\n"), true
 		}
 		lines = append(lines, line)
 	}
-	return strings.Join(lines, "\n"), true
 }
 
 // replReadBody reads body lines from the REPL's stdinLines channel so

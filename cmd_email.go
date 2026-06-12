@@ -14,20 +14,10 @@ import (
 // `reply N` and `chat`. --subject pre-fills the subject so quick
 // one-liners can skip that prompt.
 func runEmail(client *GraphClient, args []string) {
-	var subject string
-	positional := []string{}
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--subject", "-s":
-			if i+1 >= len(args) {
-				fmt.Fprintln(os.Stderr, "--subject requires a value")
-				os.Exit(1)
-			}
-			subject = args[i+1]
-			i++
-		default:
-			positional = append(positional, args[i])
-		}
+	positional, subject, err := parseEmailArgs(args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	if len(positional) == 0 {
 		fmt.Fprintln(os.Stderr, "Usage: blick email <contact> [more contacts...] [--subject \"...\"]")
@@ -39,16 +29,42 @@ func runEmail(client *GraphClient, args []string) {
 	}
 }
 
-// replEmail is the REPL-side entry. Subject is always prompted (no
-// --subject flag parsing in the REPL).
+// replEmail is the REPL-side entry. Accepts the same --subject/-s flag
+// as the shell so muscle memory from one mode doesn't break the other.
 func replEmail(client *GraphClient, args []string) {
-	if len(args) == 0 {
-		fmt.Printf("  Usage: %semail <contact> [more contacts...]%s\n", cyan, reset)
+	positional, subject, err := parseEmailArgs(args)
+	if err != nil {
+		fmt.Printf("  %s%v%s\n", red, err, reset)
 		return
 	}
-	if err := composeAndSend(client, args, "", replComposeReader{}); err != nil {
+	if len(positional) == 0 {
+		fmt.Printf("  Usage: %semail <contact> [more contacts...] [--subject \"...\"]%s\n", cyan, reset)
+		return
+	}
+	if err := composeAndSend(client, positional, subject, replComposeReader{}); err != nil {
 		fmt.Printf("  %sError: %v%s\n", red, err, reset)
 	}
+}
+
+// parseEmailArgs splits compose args into recipients + subject. Shared
+// between shell and REPL entry points so flag handling stays consistent.
+// --subject and -s both consume the next arg as the subject value.
+func parseEmailArgs(args []string) ([]string, string, error) {
+	var subject string
+	positional := []string{}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--subject", "-s":
+			if i+1 >= len(args) {
+				return nil, "", fmt.Errorf("--subject requires a value")
+			}
+			subject = args[i+1]
+			i++
+		default:
+			positional = append(positional, args[i])
+		}
+	}
+	return positional, subject, nil
 }
 
 // composeReader abstracts the subject + body input for shell vs. REPL
@@ -147,15 +163,17 @@ func (r *shellComposeReader) readBody() (string, bool) {
 	for {
 		fmt.Printf("  %s> %s", cyan, reset)
 		if !r.scanner.Scan() {
-			break
+			// Ctrl-D / EOF mid-body is cancel, not submit. Anything
+			// the user typed is discarded — matches the REPL's
+			// Ctrl-C path and the documented `.` submit protocol.
+			return "", false
 		}
 		line := r.scanner.Text()
 		if line == "." {
-			break
+			return strings.Join(lines, "\n"), true
 		}
 		lines = append(lines, line)
 	}
-	return strings.Join(lines, "\n"), true
 }
 
 // replComposeReader routes subject + body through the REPL's shared
