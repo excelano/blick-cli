@@ -49,6 +49,8 @@ func replEmail(client *GraphClient, args []string) {
 // parseEmailArgs splits compose args into recipients + subject. Shared
 // between shell and REPL entry points so flag handling stays consistent.
 // --subject and -s both consume the next arg as the subject value.
+// Positional recipients are comma-tolerant: `alice bob`, `alice,bob`, and
+// `alice, bob` all parse as two recipients.
 func parseEmailArgs(args []string) ([]string, string, error) {
 	var subject string
 	positional := []string{}
@@ -61,7 +63,12 @@ func parseEmailArgs(args []string) ([]string, string, error) {
 			subject = args[i+1]
 			i++
 		default:
-			positional = append(positional, args[i])
+			for _, part := range strings.Split(args[i], ",") {
+				part = strings.TrimSpace(part)
+				if part != "" {
+					positional = append(positional, part)
+				}
+			}
 		}
 	}
 	return positional, subject, nil

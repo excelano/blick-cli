@@ -9,12 +9,28 @@ import (
 	"time"
 )
 
+type Recipient struct {
+	Name    string
+	Address string
+}
+
+// Display returns the visible label for a recipient: prefer Name, fall
+// back to Address when the name is missing or duplicates the address.
+func (r Recipient) Display() string {
+	if r.Name != "" && r.Name != r.Address {
+		return r.Name
+	}
+	return r.Address
+}
+
 type Email struct {
 	ID       string
 	Subject  string
 	From     string
 	Preview  string
 	Received time.Time
+	To       []Recipient
+	Cc       []Recipient
 }
 
 func (g *GraphClient) UnreadEmails() ([]Email, error) {
@@ -22,7 +38,7 @@ func (g *GraphClient) UnreadEmails() ([]Email, error) {
 		"$filter":  {"isRead eq false"},
 		"$orderby": {"receivedDateTime desc"},
 		"$top":     {"10"},
-		"$select":  {"id,subject,from,bodyPreview,receivedDateTime"},
+		"$select":  {"id,subject,from,toRecipients,ccRecipients,bodyPreview,receivedDateTime"},
 	}
 
 	data, err := g.get("/me/messages", query)
@@ -38,9 +54,11 @@ func (g *GraphClient) UnreadEmails() ([]Email, error) {
 					Name string `json:"name"`
 				} `json:"emailAddress"`
 			} `json:"from"`
-			Subject          string `json:"subject"`
-			BodyPreview      string `json:"bodyPreview"`
-			ReceivedDateTime string `json:"receivedDateTime"`
+			ToRecipients     []graphRecipient `json:"toRecipients"`
+			CcRecipients     []graphRecipient `json:"ccRecipients"`
+			Subject          string           `json:"subject"`
+			BodyPreview      string           `json:"bodyPreview"`
+			ReceivedDateTime string           `json:"receivedDateTime"`
 		} `json:"value"`
 	}
 
@@ -57,10 +75,47 @@ func (g *GraphClient) UnreadEmails() ([]Email, error) {
 			From:     e.From.EmailAddress.Name,
 			Preview:  e.BodyPreview,
 			Received: received,
+			To:       toRecipients(e.ToRecipients),
+			Cc:       toRecipients(e.CcRecipients),
 		}
 	}
 
 	return emails, nil
+}
+
+type graphRecipient struct {
+	EmailAddress struct {
+		Name    string `json:"name"`
+		Address string `json:"address"`
+	} `json:"emailAddress"`
+}
+
+func toRecipients(in []graphRecipient) []Recipient {
+	out := make([]Recipient, 0, len(in))
+	for _, r := range in {
+		out = append(out, Recipient{
+			Name:    r.EmailAddress.Name,
+			Address: r.EmailAddress.Address,
+		})
+	}
+	return out
+}
+
+// withoutAddress returns recipients with any entry matching addr removed
+// (case-insensitive on the SMTP address). Used to filter the signed-in
+// user out of reply-all displays so the lists reflect who actually gets
+// the reply.
+func withoutAddress(rs []Recipient, addr string) []Recipient {
+	if addr == "" {
+		return rs
+	}
+	out := make([]Recipient, 0, len(rs))
+	for _, r := range rs {
+		if !strings.EqualFold(r.Address, addr) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 func (g *GraphClient) GetEmailBody(id string) (string, error) {
@@ -94,12 +149,16 @@ func (g *GraphClient) MarkEmailRead(id string) error {
 	return g.patch(fmt.Sprintf("/me/messages/%s", id), map[string]bool{"isRead": true})
 }
 
-func (g *GraphClient) ReplyToEmail(id, comment string) error {
+// ReplyAllToEmail posts a reply-all to the message. Graph's /replyAll
+// self-degrades to reply-to-sender when the original has no other
+// recipients, so this is safe to use unconditionally — matches the iOS
+// Blick app's "reply defaults to reply-all" behavior.
+func (g *GraphClient) ReplyAllToEmail(id, comment string) error {
 	html := strings.ReplaceAll(comment, "\n", "<br>")
 	body := map[string]interface{}{
 		"comment": html + "<br><br>",
 	}
-	_, err := g.post(fmt.Sprintf("/me/messages/%s/reply", id), body)
+	_, err := g.post(fmt.Sprintf("/me/messages/%s/replyAll", id), body)
 	return err
 }
 

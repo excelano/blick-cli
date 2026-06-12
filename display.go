@@ -16,6 +16,21 @@ const (
 	reset  = "\033[0m"
 )
 
+// printRecipientLine renders one line of the reply-all recipient summary,
+// e.g. "  To:  Alice, Bob, Carol". Silently omits the line when the list
+// is empty (self-filtered down to nothing, or no recipients in that
+// group on the original) so single-recipient threads don't show a stub.
+func printRecipientLine(label string, rs []Recipient) {
+	if len(rs) == 0 {
+		return
+	}
+	names := make([]string, len(rs))
+	for i, r := range rs {
+		names[i] = r.Display()
+	}
+	fmt.Printf("  %s%s:%s %s\n", bold, label, reset, strings.Join(names, ", "))
+}
+
 func relativeTime(t time.Time) string {
 	d := time.Since(t)
 
@@ -190,7 +205,7 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 
 func renderHelp() {
 	rows := [][4]string{
-		{"<N>", "view", "r<N>", "reply"},
+		{"<N>", "view", "r<N>", "reply-all"},
 		{"d<N>", "done", "r", "refresh"},
 		{"t", "show today", "x", "exit (mark all read)"},
 		{"H", "help", "q", "quit"},
@@ -210,7 +225,7 @@ func renderFullHelp() {
 	fmt.Printf("    %s%-8s  %-13s  %s%s\n", dim, "Short", "Long", "What it does", reset)
 	rows := []struct{ short, long, desc string }{
 		{"<N>", "view N", "Open the Nth item from the list"},
-		{"r<N>", "reply N", "Reply to the Nth item (ed-style editor)"},
+		{"r<N>", "reply N", "Reply-all to the Nth item (ed-style editor)"},
 		{"d<N>", "done N", "Mark the Nth item as read"},
 		{"e <c>", "email <c>", "Compose a new message to contact <c>"},
 		{"c <c>", "chat <c>", "Send a Teams chat to contact <c>"},

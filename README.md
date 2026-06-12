@@ -164,7 +164,7 @@ All scopes are user-consentable by default per Microsoft's stock Graph policy. I
 |---|---|
 | User.Read | Verify authentication |
 | Mail.ReadWrite | Read and mark-read emails |
-| Mail.Send | Reply to emails |
+| Mail.Send | Send new emails and reply-all to existing ones |
 | Calendars.Read | Show next meeting and today's calendar |
 | Presence.ReadWrite | Nudge presence Away → Available on run |
 | People.Read | Seed the address book from frequently-contacted people |

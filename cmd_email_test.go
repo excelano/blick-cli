@@ -23,6 +23,11 @@ func TestParseEmailArgs(t *testing.T) {
 		{"trailing --subject errors", []string{"alice", "--subject"}, nil, "", true},
 		{"trailing -s errors", []string{"alice", "-s"}, nil, "", true},
 		{"empty input", []string{}, []string{}, "", false},
+		{"comma-separated single arg", []string{"alice,bob"}, []string{"alice", "bob"}, "", false},
+		{"comma-separated with spaces", []string{"alice,", "bob,", "carol"}, []string{"alice", "bob", "carol"}, "", false},
+		{"mixed comma and space", []string{"alice,bob", "carol"}, []string{"alice", "bob", "carol"}, "", false},
+		{"empty comma parts dropped", []string{"alice,,bob"}, []string{"alice", "bob"}, "", false},
+		{"trailing comma dropped", []string{"alice,"}, []string{"alice"}, "", false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -410,7 +410,9 @@ func markAllRead(client *GraphClient, items []Item) {
 func replyTo(client *GraphClient, item Item) {
 	switch item.Kind {
 	case "email":
-		fmt.Printf("  Reply to %s — %q:\n", item.Email.From, truncate(item.Email.Subject, 40))
+		fmt.Printf("  Reply-all to %s — %q:\n", item.Email.From, truncate(item.Email.Subject, 40))
+		printRecipientLine("To", withoutAddress(item.Email.To, client.userMail))
+		printRecipientLine("Cc", withoutAddress(item.Email.Cc, client.userMail))
 	case "chat":
 		fmt.Printf("  Reply in %s:\n", item.Chat.Topic)
 	}
@@ -444,7 +446,7 @@ func replyTo(client *GraphClient, item Item) {
 
 	switch item.Kind {
 	case "email":
-		if err := client.ReplyToEmail(item.Email.ID, text); err != nil {
+		if err := client.ReplyAllToEmail(item.Email.ID, text); err != nil {
 			fmt.Printf("  %sError: %v%s\n", red, err, reset)
 			return
 		}

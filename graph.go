@@ -20,6 +20,7 @@ type GraphClient struct {
 	tokenSource oauth2.TokenSource
 	httpClient  *http.Client
 	userID      string
+	userMail    string
 	tenantID    string
 }
 
@@ -30,18 +31,27 @@ func NewGraphClient(cfg Config, tok *oauth2.Token) (*GraphClient, error) {
 		httpClient:  &http.Client{},
 	}
 
-	// Fetch user ID for filtering (e.g., unread chats)
-	data, err := g.get("/me", url.Values{"$select": {"id"}})
+	// Fetch user ID + primary mail address. userID filters unread chats;
+	// userMail filters self out of reply-all recipient displays. mail can
+	// be null for shared/guest accounts — userPrincipalName covers that
+	// fallback for the rare case.
+	data, err := g.get("/me", url.Values{"$select": {"id,mail,userPrincipalName"}})
 	if err != nil {
 		return nil, fmt.Errorf("fetching user profile: %w", err)
 	}
 	var me struct {
-		ID string `json:"id"`
+		ID                string `json:"id"`
+		Mail              string `json:"mail"`
+		UserPrincipalName string `json:"userPrincipalName"`
 	}
 	if err := json.Unmarshal(data, &me); err != nil {
 		return nil, err
 	}
 	g.userID = me.ID
+	g.userMail = me.Mail
+	if g.userMail == "" {
+		g.userMail = me.UserPrincipalName
+	}
 
 	// Pull the home tenant id off the access token. markChatReadForUser
 	// needs a teamworkUserIdentity with both id and tenantId in the body,
