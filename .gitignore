@@ -22,7 +22,7 @@ go.work.sum
 .env
 
 # Built binary at repo root
-/checkin
+/blick
 
 # Local config / cached tokens (just in case)
 config.json
