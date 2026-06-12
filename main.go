@@ -54,7 +54,7 @@ func main() {
 		fmt.Println("  join                           Open the current or next online meeting")
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
 		fmt.Println("  email <contact> [--subject]    Compose and send a message")
-		fmt.Println("  chat <contact>                 Send a Teams chat message")
+		fmt.Println("  chat <contact> [--topic]       Send a Teams chat (group when >1 contact)")
 		fmt.Println()
 		fmt.Println("Flags:")
 		fmt.Println("  -h, --help      Show this help")
@@ -134,10 +134,6 @@ func main() {
 	}
 
 	items := fetchAndDisplay(client, cfg.EnableTeams)
-	if items == nil {
-		return
-	}
-
 	renderHelp()
 
 	stdinLines = make(chan string)
@@ -194,9 +190,6 @@ func main() {
 
 		case "refresh":
 			items = fetchAndDisplay(client, cfg.EnableTeams)
-			if items == nil {
-				return
-			}
 			renderHelp()
 
 		case "exit":
@@ -395,11 +388,6 @@ func fetchAndDisplay(client *GraphClient, enableTeams bool) []Item {
 		items = append(items, Item{Kind: "chat", Chat: &chats[i]})
 	}
 
-	if len(items) == 0 {
-		fmt.Printf("  %sNothing to do!%s\n\n", dim, reset)
-		return nil
-	}
-
 	return items
 }
 
@@ -421,6 +409,9 @@ func markRead(client *GraphClient, item Item) {
 }
 
 func markAllRead(client *GraphClient, items []Item) {
+	if len(items) == 0 {
+		return
+	}
 	for _, item := range items {
 		switch item.Kind {
 		case "email":

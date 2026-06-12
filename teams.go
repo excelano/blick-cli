@@ -273,6 +273,54 @@ func (g *GraphClient) EnsureOneOnOneChat(recipientUserID string) (string, error)
 	return c.ID, nil
 }
 
+// CreateGroupChat creates a Teams group chat with the signed-in user plus
+// the supplied recipients. topic is optional — when empty, Teams shows a
+// comma-joined participant list as the chat title. Unlike /chats for
+// oneOnOne (which is idempotent and returns the existing chat ID),
+// chatType: group always creates a fresh chat — there's no natural
+// participant key to dedupe against, since the same set of people can
+// have any number of distinct group threads. So we don't cache the
+// chat ID on any contact entry; each `chat alice bob` opens a new
+// thread, matching how Teams itself behaves when you start a new chat
+// from the recipient picker.
+func (g *GraphClient) CreateGroupChat(recipientUserIDs []string, topic string) (string, error) {
+	members := []map[string]interface{}{
+		{
+			"@odata.type":     "#microsoft.graph.aadUserConversationMember",
+			"roles":           []string{"owner"},
+			"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", g.userID),
+		},
+	}
+	for _, id := range recipientUserIDs {
+		members = append(members, map[string]interface{}{
+			"@odata.type":     "#microsoft.graph.aadUserConversationMember",
+			"roles":           []string{"owner"},
+			"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", id),
+		})
+	}
+	body := map[string]interface{}{
+		"chatType": "group",
+		"members":  members,
+	}
+	if topic != "" {
+		body["topic"] = topic
+	}
+	data, err := g.post("/chats", body)
+	if err != nil {
+		return "", err
+	}
+	var c struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &c); err != nil {
+		return "", err
+	}
+	if c.ID == "" {
+		return "", fmt.Errorf("no chat ID returned by /chats")
+	}
+	return c.ID, nil
+}
+
 func (g *GraphClient) SendChatMessage(chatID, text string) error {
 	html := strings.ReplaceAll(text, "\n", "<br>")
 	body := map[string]interface{}{
