@@ -64,10 +64,6 @@ Today an error during refresh prints inline and may scroll past. A persistent on
 
 Attachment handling as a category is too large to scope all at once. Captured here as smaller, independent slices.
 
-### Attachment indicator in the unread list
-
-Add a small paperclip glyph next to messages where Graph's `hasAttachments` is true. One field added to the `$select` list, one column-render tweak in `display.go`. No new endpoints. Cheap and immediately useful — lets the user see at a glance which messages will be heavier to deal with.
-
 ### List attachments on a message
 
 `attach N` against the unread list calls `/me/messages/{id}/attachments` and prints `[1] name.pdf (124 KB)` style rows. No download. Read-only inspection.
