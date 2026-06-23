@@ -6,9 +6,7 @@ Friction observed in real use. Items here have bitten in practice — speculativ
 
 ## Next up
 
-### Hide quoted reply history in email view
-
-The iOS Blick app strips quoted reply history from the initial body render and exposes a tap to unfold it. On the CLI, `view N` today dumps the entire thread, which buries the new content under accumulated history. Elide quoted blocks on the initial render — lines starting with `>` after the HTML strip, plus reply-separator markers like "On {date}, {name} wrote:" and Outlook's "From: / Sent: / To: / Subject:" header chunk — with a one-line `[N quoted lines hidden]` summary and a verb to unfold (TBD: standalone `expand` after the initial view, or a `view N full` flag).
+_(empty — pick the next item from the sections below.)_
 
 ---
 
