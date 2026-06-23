@@ -18,6 +18,15 @@ var (
 	bodyConfig   *readline.Config
 )
 
+// identityPainter is a no-op Painter for bodyConfig. readline's NewEx
+// auto-installs a default painter when its initial config has none, but
+// SetConfig does not — so a config that arrives only via SetConfig keeps
+// a nil Painter and RuneBuffer.output crashes on first keystroke. We
+// supply our own so the body config is whole on arrival.
+type identityPainter struct{}
+
+func (identityPainter) Paint(line []rune, _ int) []rune { return line }
+
 // replVerbs is the verb table for tab completion at REPL position 0.
 // Single-letter aliases are included so e/c/r/t/j/x/H/q complete the
 // same way as their long forms. Numeric forms (<N>, <N>r, <N>d) are
@@ -54,6 +63,7 @@ func setupReadline(historyPath string, contactKeys []string) error {
 		DisableAutoSaveHistory: true,
 		AutoComplete:           nil,
 		InterruptPrompt:        "^C",
+		Painter:                identityPainter{},
 	}
 	var err error
 	rl, err = readline.NewEx(promptConfig)
