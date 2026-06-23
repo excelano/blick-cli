@@ -2,19 +2,30 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
 
-const (
+// ANSI escapes for the dashboard. Vars (not consts) so the NO_COLOR
+// init can zero them out — no-color.org convention: any non-empty
+// NO_COLOR env var suppresses all color output.
+var (
 	bold   = "\033[1m"
 	dim    = "\033[2m"
 	cyan   = "\033[36m"
 	yellow = "\033[33m"
+	orange = "\033[38;5;208m"
 	green  = "\033[32m"
 	red    = "\033[31m"
 	reset  = "\033[0m"
 )
+
+func init() {
+	if os.Getenv("NO_COLOR") != "" {
+		bold, dim, cyan, yellow, orange, green, red, reset = "", "", "", "", "", "", "", ""
+	}
+}
 
 // printRecipientLine renders one line of the reply-all recipient summary,
 // e.g. "  To:  Alice, Bob, Carol". Silently omits the line when the list
@@ -141,10 +152,15 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 	if meeting != nil {
 		timeColor := green
 		until := untilTime(meeting.Start)
-		if time.Until(meeting.Start) < 15*time.Minute {
+		d := time.Until(meeting.Start)
+		if d < 15*time.Minute {
 			timeColor = yellow
 		}
-		if time.Until(meeting.Start) < 0 {
+		if d < 3*time.Minute && d >= 0 {
+			timeColor = orange
+			until = "Starting soon"
+		}
+		if d < 0 {
 			timeColor = red
 			until = "now"
 		}

@@ -55,6 +55,7 @@ func main() {
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
 		fmt.Println("  email <contact> [--subject]    Compose and send a message")
 		fmt.Println("  chat <contact> [--topic]       Send a Teams chat (group when >1 contact)")
+		fmt.Println("  logout                         Clear cached credentials")
 		fmt.Println()
 		fmt.Println("Flags:")
 		fmt.Println("  -h, --help      Show this help")
@@ -67,6 +68,13 @@ func main() {
 		fmt.Println()
 		fmt.Println("See README.md for Azure AD app registration.")
 		os.Exit(0)
+	}
+
+	// `logout` is the inverse of authentication, so it explicitly must
+	// not gate on auth. Handle before the device-code flow.
+	if len(os.Args) > 1 && os.Args[1] == "logout" {
+		runLogout()
+		return
 	}
 
 	// Local-only contacts commands (everything except `seed`) don't need

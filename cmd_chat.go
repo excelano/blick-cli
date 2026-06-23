@@ -106,7 +106,9 @@ func composeAndSendChat(client *GraphClient, recipients []string, topic string, 
 		displays[i] = c.display
 	}
 	fmt.Printf("  %sTo:%s %s\n", bold, reset, strings.Join(displays, ", "))
-	if topic != "" {
+	// Only group chats carry a topic. For 1:1, --topic is silently
+	// ignored — Graph has nowhere to put it on oneOnOne chats.
+	if topic != "" && len(contacts) > 1 {
 		fmt.Printf("  %sTopic:%s %s\n", bold, reset, topic)
 	}
 

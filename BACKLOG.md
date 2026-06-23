@@ -1,28 +1,20 @@
 # Blick CLI Backlog
 
-Ideas captured but not yet scheduled. No commitment except where noted.
+Friction observed in real use. Items here have bitten in practice — speculative ideas don't earn a slot. Order within sections is rough; what bubbles to the top is whatever's hurting most that week.
 
 ---
 
-## Planned for v0.8.0 (today)
+## Next up
 
-### 1. Reply-all as the default
+### REPL line-editing ergonomics
 
-Mirror the iOS Blick app: `reply N` defaults to reply-all, with Graph degrading naturally to reply-to-sender when there are no other recipients. The Graph call moves from `/me/messages/{id}/reply` to `/me/messages/{id}/replyAll`. One-line change in `mail.go:97 ReplyToEmail`; rename to `ReplyAllToEmail` for clarity, leave `reply N` as the REPL verb (users don't need to know the distinction). Document in README + FEATURES.
+`github.com/chzyer/readline` at the top-level REPL prompt: arrow-key cursor editing, up/down arrow command history (persisted at `~/.config/blick/history`), tab completion for command verbs (`email`, `chat`, `reply`, `mark`, `refresh`, `H`, `q`, plus `e`/`c` aliases) and contact handles where the next arg is a recipient. Pure Go, single dep, battle-tested (CockroachDB, IPFS, etcdctl). In maintenance mode but stable.
 
-### 2. Group chats
+Scope: top-level REPL prompt only. Leave the inline body input for `email` / `chat` / `reply N` on the existing `stdinLines` + `sigCh` plumbing — the `.`-sentinel modal doesn't want history or completion bleeding across drafts. Readline returns `readline.ErrInterrupt` on Ctrl-C, so the main-prompt `sigCh` plumbing becomes redundant there.
 
-Lift the single-recipient restriction in `cmd_chat.go`. `chat alice bob carol` from the shell or REPL creates a group chat via `POST /chats` with `chatType: group`, looks up each recipient's user ID via `LookupUserID`, and posts the first message. Optional `--topic "..."` flag to label the chat; without it the chat shows as `(no topic)` in Teams, same as the Teams new-chat UI.
+### Hide quoted reply history in email view
 
-Key design choice: don't try to "find or create" group chats by member set. Always create a new one. This matches Teams' own behavior when you start a chat with multiple people — there's no idempotency expectation. Cache nothing in `contacts.json`; group chats live in Teams, not in the local address book.
-
-Touch points: `teams.go` gets `CreateGroupChat(userIDs []string, topic string) (chatID string, err error)`; `cmd_chat.go` removes the `len(args) > 1` guard and branches on count to call `EnsureOneOnOneChat` or `CreateGroupChat`. Shell + REPL both refuse cleanly when `enable_teams: false`.
-
-### 3. `blick join`
-
-Shell command and REPL verb that opens the join URL for the current meeting (if one is in progress) or the next meeting (if none is current). Uses Graph's `onlineMeeting.joinWebUrl` — currently not selected by `calendar.go`, needs adding to the `$select` in `NextMeeting` and a new `Meeting.JoinURL` field. On Linux, shell out to `xdg-open` (which routes to Firefox per the box's setup); fall back to printing the URL if `xdg-open` is missing. No `msteams:/` rewrite — the desktop Teams app was killed on Linux in 2023, so Firefox + Teams web app is the actual path.
-
-Edge cases: meeting exists but isn't an online meeting → print "next meeting is not an online meeting"; no meeting in the next 24h → print "no meeting to join"; multiple meetings starting at the same moment → take the first by start time, tie-break by subject alphabetical.
+The iOS Blick app strips quoted reply history from the initial body render and exposes a tap to unfold it. On the CLI, `view N` today dumps the entire thread, which buries the new content under accumulated history. Elide quoted blocks on the initial render — lines starting with `>` after the HTML strip, plus reply-separator markers like "On {date}, {name} wrote:" and Outlook's "From: / Sent: / To: / Subject:" header chunk — with a one-line `[N quoted lines hidden]` summary and a verb to unfold (TBD: standalone `expand` after the initial view, or a `view N full` flag).
 
 ---
 
@@ -53,10 +45,6 @@ Three verbs `accept N`, `tentative N`, `decline N` against either the calendar v
 ### Conflict detection in the calendar view
 
 Compute overlap across the 10-event window in `TodaysMeetings` results. Mark conflicts with a small indicator in the `today` view; new verb `conflicts` lists overlapping pairs. No resolution flow — the CLI is keyboard, not sheet-based; resolution is `decline N` against the conflict.
-
-### "Starting soon" highlight
-
-When the next meeting is within 3 minutes, flip the time label color from cyan to orange and the text from `in N min` to `Starting soon`. Pure display-layer change in `display.go`.
 
 ### Custom Teams status message
 
@@ -169,28 +157,6 @@ Lower priority — David's note. Captured for future.
 ---
 
 ## Operational
-
-### REPL line-editing ergonomics
-
-`github.com/chzyer/readline` at the top-level REPL prompt: arrow-key cursor editing, up/down arrow command history (persisted at `~/.config/blick/history`), tab completion for command verbs (`email`, `chat`, `reply`, `mark`, `refresh`, `H`, `q`, plus `e`/`c` aliases) and contact handles where the next arg is a recipient. Pure Go, single dep, battle-tested (CockroachDB, IPFS, etcdctl). In maintenance mode but stable.
-
-Scope: top-level REPL prompt only. Leave the inline body input for `email` / `chat` / `reply N` on the existing `stdinLines` + `sigCh` plumbing — the `.`-sentinel modal doesn't want history or completion bleeding across drafts. Readline returns `readline.ErrInterrupt` on Ctrl-C, so the main-prompt `sigCh` plumbing becomes redundant there.
-
-### Watch mode with desktop notifications
-
-`blick watch` polls on an interval (default 60s) and fires libnotify (`notify-send`) on new mail or new chats. Suppress notifications during DND/Busy. Foreground process — Ctrl-C to stop. No daemon, no systemd unit.
-
-### JSON output
-
-`--json` flag on the dashboard for piping into other tools. Stable schema with `unread_mail[]`, `chats[]`, `next_meeting`, `today[]`, `presence`. Useful for status-bar widgets or wrapper scripts.
-
-### Logout / re-auth
-
-`blick logout` deletes `~/.config/blick/token.json` and prints the next-launch behavior. Currently the user does this by hand. Symmetric command makes the affordance discoverable.
-
-### NO_COLOR environment variable
-
-Standard convention from no-color.org — when `NO_COLOR` is set (any non-empty value), suppress ANSI escape sequences. One-line check in the color helpers in `display.go`.
 
 ### Undo a bulk action
 

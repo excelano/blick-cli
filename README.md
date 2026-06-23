@@ -2,6 +2,12 @@
 
 Check unread Outlook emails, Teams chats, and your next meeting from the terminal.
 
+## What blick is
+
+blick replaces as much day-to-day Outlook and Teams usage as fits the keyboard. The aperture is deliberately narrow: it surfaces the things that need action right now — unread mail, unread chats, the meeting that's about to start — and gives you keyboard verbs to reply, mark read, compose, or join. It is not where you go to search history, organize folders, browse Teams channels, or take a call. Teams stays the place for calls and meetings, permanently.
+
+Scope grows by friction, not by speculation. If something missing bites in real use it goes on the list; if it doesn't, it doesn't. The Graph API is the outer limit on what blick can do, but blick deliberately doesn't try to expose everything Graph offers.
+
 ## Install
 
 The fastest path on Linux or macOS:
