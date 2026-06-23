@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -271,18 +272,34 @@ func contactsSeed(client *GraphClient, store *ContactStore) {
 	fmt.Printf("  %sAdded %d contacts.%s\n", green, added, reset)
 }
 
+// editorFallback returns the first available editor in the OS-specific
+// fallback chain when $EDITOR is unset: nved → ved → nano → vim on
+// Unix/macOS, edit → notepad on Windows. Returns "" if none are on PATH.
+func editorFallback() string {
+	var chain []string
+	if runtime.GOOS == "windows" {
+		chain = []string{"edit", "notepad"}
+	} else {
+		chain = []string{"nved", "ved", "nano", "vim"}
+	}
+	for _, e := range chain {
+		if _, err := exec.LookPath(e); err == nil {
+			return e
+		}
+	}
+	return ""
+}
+
 // editProposed writes the proposed list to a temp JSON file, opens it in
-// $EDITOR (falls back to vi, then ved), and parses the result back. Lets
-// the user prune rows or rename keys before commit. The temp file is left
-// on disk after a failed parse so the user can recover their edits.
+// $EDITOR (or the OS-specific fallback chain when $EDITOR is unset), and
+// parses the result back. Lets the user prune rows or rename keys before
+// commit. The temp file is left on disk after a failed parse so the user
+// can recover their edits.
 func editProposed(props []proposedContact) ([]proposedContact, error) {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
-		if _, err := exec.LookPath("vi"); err == nil {
-			editor = "vi"
-		} else if _, err := exec.LookPath("ved"); err == nil {
-			editor = "ved"
-		} else {
+		editor = editorFallback()
+		if editor == "" {
 			return nil, fmt.Errorf("no editor available — set $EDITOR")
 		}
 	}
