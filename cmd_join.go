@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"time"
 )
 
@@ -31,9 +32,9 @@ func replJoinReport(format string, args ...interface{})  { fmt.Printf("  "+forma
 
 // joinMeeting fetches today's meetings, picks the current one (in
 // progress, online, with a join URL) or the next upcoming one matching
-// the same predicate, and opens the join URL via xdg-open. Returns nil
-// on success or on user-facing "nothing to join" cases (already
-// reported); returns an error only for unexpected failures.
+// the same predicate, and opens the join URL in the system browser.
+// Returns nil on success or on user-facing "nothing to join" cases
+// (already reported); returns an error only for unexpected failures.
 func joinMeeting(client *GraphClient, report joinReporter) error {
 	meetings, err := client.TodaysMeetings()
 	if err != nil {
@@ -84,11 +85,19 @@ func pickJoinableMeeting(meetings []Meeting, now time.Time) *Meeting {
 	return next
 }
 
-// openURL shells out to xdg-open. Per feedback_firefox_only_browser
-// Firefox is the only renderer on the box so the OS handler does the
-// right thing without further coaxing.
+// openURL hands the URL to the OS's browser launcher: rundll32 on
+// Windows, `open` on macOS, `xdg-open` everywhere else. Caller is
+// expected to print the URL on error so the user can paste it manually.
 func openURL(url string) error {
-	cmd := exec.Command("xdg-open", url)
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	return cmd.Start()
