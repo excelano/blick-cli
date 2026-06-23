@@ -183,43 +183,29 @@ func (r *shellComposeReader) readBody() (string, bool) {
 	}
 }
 
-// replComposeReader routes subject + body through the REPL's shared
-// stdinLines + sigCh so Ctrl-C cancels the compose rather than killing
-// the process.
+// replComposeReader routes subject + body through the shared
+// readline.Instance in body-mode config: no history persistence (drafts
+// shouldn't show up in `history`) and no autocompletion (Tab inserting
+// a verb mid-message is a bug, not a feature). Ctrl-C / EOF return
+// readline.ErrInterrupt / io.EOF which we collapse to (_, false) =
+// "cancel the compose".
 type replComposeReader struct{}
 
 func (replComposeReader) readLine(prompt string) (string, bool) {
-	fmt.Print(prompt)
-	select {
-	case line, ok := <-stdinLines:
-		if !ok {
-			return "", false
-		}
-		return line, true
-	case <-sigCh:
-		fmt.Println()
+	enterBodyMode()
+	defer exitBodyMode()
+	rl.SetPrompt(prompt)
+	line, err := rl.Readline()
+	if err != nil {
 		return "", false
 	}
+	return line, true
 }
 
 func (replComposeReader) readBody() (string, bool) {
-	var lines []string
-	for {
-		fmt.Printf("  %s> %s", cyan, reset)
-		select {
-		case line, ok := <-stdinLines:
-			if !ok {
-				return "", false
-			}
-			if line == "." {
-				return strings.Join(lines, "\n"), true
-			}
-			lines = append(lines, line)
-		case <-sigCh:
-			fmt.Println()
-			return "", false
-		}
-	}
+	enterBodyMode()
+	defer exitBodyMode()
+	return readBodyDraft()
 }
 
 // saveDraftCopy writes the unsent draft to ~/.config/blick/drafts/ with

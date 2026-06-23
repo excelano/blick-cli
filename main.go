@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/chzyer/readline"
 )
 
 type Item struct {
@@ -23,15 +23,6 @@ var (
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
-)
-
-// Interactive REPL plumbing. One goroutine owns the stdin scanner and feeds
-// stdinLines; sigCh receives SIGINT so we can route Ctrl-C to "cancel the
-// reply" instead of letting it kill the process. Initialized in main() before
-// the REPL starts.
-var (
-	stdinLines chan string
-	sigCh      chan os.Signal
 )
 
 func main() {
@@ -144,32 +135,30 @@ func main() {
 	items := fetchAndDisplay(client, cfg.EnableTeams)
 	renderHelp()
 
-	stdinLines = make(chan string)
-	sigCh = make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
-	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			stdinLines <- scanner.Text()
-		}
-		close(stdinLines)
-	}()
+	if err := setupReadline(replHistoryPath(), loadContactKeys()); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	defer rl.Close()
 
 	for {
-		fmt.Printf("%sblick>%s ", bold, reset)
-		var input string
-		select {
-		case line, ok := <-stdinLines:
-			if !ok {
-				fmt.Println()
+		line, err := rl.Readline()
+		if err == readline.ErrInterrupt {
+			// Ctrl-C at the top-level prompt: empty buffer exits
+			// (matches the old sigCh-fires-and-we-return behavior).
+			// A partial line just gets discarded — readline already
+			// rendered ^C, redraw and continue.
+			if len(line) == 0 {
 				return
 			}
-			input = strings.TrimSpace(line)
-		case <-sigCh:
-			fmt.Println()
+			continue
+		}
+		if err != nil {
+			// io.EOF (Ctrl-D) — clean exit.
 			return
 		}
 
+		input := strings.TrimSpace(line)
 		if input == "" {
 			continue
 		}
@@ -446,27 +435,14 @@ func replyTo(client *GraphClient, item Item) {
 	}
 	fmt.Printf("  %s(end with `.` on a line by itself, or Ctrl-C to cancel)%s\n", dim, reset)
 
-	var lines []string
-	done := false
-	for !done {
-		fmt.Printf("  %s> %s", cyan, reset)
-		select {
-		case line, ok := <-stdinLines:
-			if !ok {
-				return
-			}
-			if line == "." {
-				done = true
-			} else {
-				lines = append(lines, line)
-			}
-		case <-sigCh:
-			fmt.Println()
-			fmt.Println("  (cancelled)")
-			return
-		}
+	enterBodyMode()
+	body, ok := readBodyDraft()
+	exitBodyMode()
+	if !ok {
+		fmt.Println("  (cancelled)")
+		return
 	}
-	text := strings.TrimRight(strings.Join(lines, "\n"), " \t\n")
+	text := strings.TrimRight(body, " \t\n")
 	if text == "" {
 		fmt.Println("  (cancelled)")
 		return

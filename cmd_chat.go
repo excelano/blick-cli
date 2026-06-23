@@ -188,25 +188,12 @@ func shellReadBody() (string, bool) {
 	}
 }
 
-// replReadBody reads body lines from the REPL's stdinLines channel so
-// SIGINT routes to "cancel this reply" rather than killing the process.
-// Returns ("", false) when SIGINT fires or the channel closes mid-input.
+// replReadBody loops on rl.Readline() in body-mode config. Wrapped in
+// enterBodyMode/exitBodyMode so history saving and tab completion are
+// suspended for the duration of the draft, matching the shell-side
+// .-sentinel UX.
 func replReadBody() (string, bool) {
-	var lines []string
-	for {
-		fmt.Printf("  %s> %s", cyan, reset)
-		select {
-		case line, ok := <-stdinLines:
-			if !ok {
-				return "", false
-			}
-			if line == "." {
-				return strings.Join(lines, "\n"), true
-			}
-			lines = append(lines, line)
-		case <-sigCh:
-			fmt.Println()
-			return "", false
-		}
-	}
+	enterBodyMode()
+	defer exitBodyMode()
+	return readBodyDraft()
 }

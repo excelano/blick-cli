@@ -6,12 +6,6 @@ Friction observed in real use. Items here have bitten in practice — speculativ
 
 ## Next up
 
-### REPL line-editing ergonomics
-
-`github.com/chzyer/readline` at the top-level REPL prompt: arrow-key cursor editing, up/down arrow command history (persisted at `~/.config/blick/history`), tab completion for command verbs (`email`, `chat`, `reply`, `mark`, `refresh`, `H`, `q`, plus `e`/`c` aliases) and contact handles where the next arg is a recipient. Pure Go, single dep, battle-tested (CockroachDB, IPFS, etcdctl). In maintenance mode but stable.
-
-Scope: top-level REPL prompt only. Leave the inline body input for `email` / `chat` / `reply N` on the existing `stdinLines` + `sigCh` plumbing — the `.`-sentinel modal doesn't want history or completion bleeding across drafts. Readline returns `readline.ErrInterrupt` on Ctrl-C, so the main-prompt `sigCh` plumbing becomes redundant there.
-
 ### Hide quoted reply history in email view
 
 The iOS Blick app strips quoted reply history from the initial body render and exposes a tap to unfold it. On the CLI, `view N` today dumps the entire thread, which buries the new content under accumulated history. Elide quoted blocks on the initial render — lines starting with `>` after the HTML strip, plus reply-separator markers like "On {date}, {name} wrote:" and Outlook's "From: / Sent: / To: / Subject:" header chunk — with a one-line `[N quoted lines hidden]` summary and a verb to unfold (TBD: standalone `expand` after the initial view, or a `view N full` flag).
