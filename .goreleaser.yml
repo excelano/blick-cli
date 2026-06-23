@@ -92,3 +92,19 @@ changelog:
       - "^test:"
       - "^ci:"
       - "Merge pull request"
+
+brews:
+  - name: blick
+    repository:
+      owner: excelano
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://excelano.com/blick-cli/"
+    description: "Check Microsoft 365 mail, Teams chats, and next meeting from the terminal"
+    license: "MIT"
+    install: |
+      bin.install "blick"
+    test: |
+      system "#{bin}/blick", "--version"
