@@ -188,10 +188,15 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 	} else {
 		fmt.Printf("  📧 %sunread emails (%d):%s\n", bold, len(emails), reset)
 		for i, e := range emails {
-			fmt.Printf("    %s%d.%s %s — %q  %s(%s · %s)%s\n",
+			clip := ""
+			if e.HasAttachments {
+				clip = " 📎"
+			}
+			fmt.Printf("    %s%d.%s %s — %q%s  %s(%s · %s)%s\n",
 				cyan, i+1, reset,
 				e.From,
 				truncate(e.Subject, 50),
+				clip,
 				dim, relativeTime(e.Received), absoluteTime(e.Received), reset)
 		}
 		fmt.Println()

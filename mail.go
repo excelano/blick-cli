@@ -24,13 +24,14 @@ func (r Recipient) Display() string {
 }
 
 type Email struct {
-	ID       string
-	Subject  string
-	From     string
-	Preview  string
-	Received time.Time
-	To       []Recipient
-	Cc       []Recipient
+	ID             string
+	Subject        string
+	From           string
+	Preview        string
+	Received       time.Time
+	To             []Recipient
+	Cc             []Recipient
+	HasAttachments bool
 }
 
 func (g *GraphClient) UnreadEmails() ([]Email, error) {
@@ -38,7 +39,7 @@ func (g *GraphClient) UnreadEmails() ([]Email, error) {
 		"$filter":  {"isRead eq false"},
 		"$orderby": {"receivedDateTime desc"},
 		"$top":     {"10"},
-		"$select":  {"id,subject,from,toRecipients,ccRecipients,bodyPreview,receivedDateTime"},
+		"$select":  {"id,subject,from,toRecipients,ccRecipients,bodyPreview,receivedDateTime,hasAttachments"},
 	}
 
 	data, err := g.get("/me/messages", query)
@@ -59,6 +60,7 @@ func (g *GraphClient) UnreadEmails() ([]Email, error) {
 			Subject          string           `json:"subject"`
 			BodyPreview      string           `json:"bodyPreview"`
 			ReceivedDateTime string           `json:"receivedDateTime"`
+			HasAttachments   bool             `json:"hasAttachments"`
 		} `json:"value"`
 	}
 
@@ -70,13 +72,14 @@ func (g *GraphClient) UnreadEmails() ([]Email, error) {
 	for i, e := range result.Value {
 		received, _ := time.Parse(time.RFC3339Nano, e.ReceivedDateTime)
 		emails[i] = Email{
-			ID:       e.ID,
-			Subject:  e.Subject,
-			From:     e.From.EmailAddress.Name,
-			Preview:  e.BodyPreview,
-			Received: received,
-			To:       toRecipients(e.ToRecipients),
-			Cc:       toRecipients(e.CcRecipients),
+			ID:             e.ID,
+			Subject:        e.Subject,
+			From:           e.From.EmailAddress.Name,
+			Preview:        e.BodyPreview,
+			Received:       received,
+			To:             toRecipients(e.ToRecipients),
+			Cc:             toRecipients(e.CcRecipients),
+			HasAttachments: e.HasAttachments,
 		}
 	}
 
