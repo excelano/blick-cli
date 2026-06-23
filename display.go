@@ -240,6 +240,7 @@ func renderFullHelp() {
 	fmt.Printf("    %s%-8s  %-13s  %s%s\n", dim, "Short", "Long", "What it does", reset)
 	rows := []struct{ short, long, desc string }{
 		{"<N>", "view N", "Open the Nth item from the list"},
+		{"<N>f", "view N full", "Open the Nth item with quoted history expanded"},
 		{"<N>r", "reply N", "Reply-all to the Nth item (ed-style editor)"},
 		{"<N>d", "done N", "Mark the Nth item as read"},
 		{"e <c>", "email <c>", "Compose a new email (one or more contacts)"},

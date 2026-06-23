@@ -207,7 +207,14 @@ func main() {
 				fmt.Printf("  Invalid item: %s\n", input)
 				continue
 			}
-			viewItem(client, items[n-1])
+			viewItem(client, items[n-1], n, false)
+
+		case "view-full":
+			if n < 1 || n > len(items) {
+				fmt.Printf("  Invalid item: %s\n", input)
+				continue
+			}
+			viewItem(client, items[n-1], n, true)
 
 		case "reply":
 			if n < 1 || n > len(items) {
@@ -255,17 +262,19 @@ func parseCommand(input string) (string, int) {
 		return "view", num
 	}
 
-	// ed/ved-style: address first, then action letter — e.g. 5r, 5d.
+	// ed/ved-style: address first, then action letter — e.g. 5r, 5d, 5f.
 	// This is the canonical form shown in the overview help.
 	if len(first) > 1 {
 		last := first[len(first)-1]
-		if last == 'r' || last == 'd' {
+		if last == 'r' || last == 'd' || last == 'f' {
 			if num, err := strconv.Atoi(first[:len(first)-1]); err == nil {
 				switch last {
 				case 'r':
 					return "reply", num
 				case 'd':
 					return "done", num
+				case 'f':
+					return "view-full", num
 				}
 			}
 		}
@@ -321,6 +330,11 @@ func parseCommand(input string) (string, int) {
 		num, err := strconv.Atoi(rest[0])
 		if err != nil {
 			return "unknown", -1
+		}
+		// `view N full` → "view-full" so the dispatcher renders
+		// without folding the quoted history.
+		if first == "view" && len(rest) >= 2 && rest[1] == "full" {
+			return "view-full", num
 		}
 		return first, num
 	case "today", "refresh", "exit", "help", "quit", "join":
@@ -465,7 +479,7 @@ func replyTo(client *GraphClient, item Item) {
 	}
 }
 
-func viewItem(client *GraphClient, item Item) {
+func viewItem(client *GraphClient, item Item, index int, showFull bool) {
 	switch item.Kind {
 	case "email":
 		fmt.Printf("\n  %sFrom:%s %s\n", bold, reset, item.Email.From)
@@ -478,9 +492,26 @@ func viewItem(client *GraphClient, item Item) {
 			return
 		}
 
-		// Indent body for readability
-		for _, line := range strings.Split(body, "\n") {
+		// Fold the quoted reply history on the default render so the
+		// new content isn't buried under accumulated thread. `view N
+		// full` (or `Nf`) skips folding.
+		render := body
+		var hidden int
+		if !showFull {
+			visible, _, n := splitQuotedHistory(body)
+			render, hidden = visible, n
+		}
+
+		for _, line := range strings.Split(render, "\n") {
 			fmt.Printf("  %s\n", line)
+		}
+		if hidden > 0 {
+			noun := "lines"
+			if hidden == 1 {
+				noun = "line"
+			}
+			fmt.Printf("\n  %s[%d quoted %s hidden — type %s%df%s to expand]%s\n",
+				dim, hidden, noun, cyan, index, dim, reset)
 		}
 		fmt.Println()
 

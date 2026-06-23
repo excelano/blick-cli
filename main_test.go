@@ -15,7 +15,9 @@ func TestParseCommand(t *testing.T) {
 		// ed-style canonical: address-then-letter
 		{"5r", "reply", 5},
 		{"5d", "done", 5},
+		{"5f", "view-full", 5},
 		{"10r", "reply", 10},
+		{"view 5 full", "view-full", 5},
 
 		// Legacy letter-then-number still works
 		{"r5", "reply", 5},
