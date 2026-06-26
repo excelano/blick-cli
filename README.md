@@ -25,6 +25,14 @@ curl -fsSL https://excelano.com/apt/setup.sh | sudo sh
 sudo apt install blick
 ```
 
+With [Homebrew](https://brew.sh) on macOS or Linux, so `brew upgrade` keeps it current:
+
+```sh
+brew tap excelano/tap
+brew trust excelano/tap   # one-time: Homebrew gates third-party taps behind explicit trust
+brew install blick
+```
+
 To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/uninstall.sh | sh` (or `sudo apt remove blick` if installed via apt).
 
 ### Build from source
