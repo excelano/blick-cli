@@ -10,30 +10,42 @@ Scope grows by friction, not by speculation. If something missing bites in real 
 
 ## Install
 
-The fastest path on Linux or macOS:
+### Debian and Ubuntu
+
+Add the [Excelano apt repository](https://excelano.com/apt/) once (one-time setup):
+
+```sh
+curl -fsSL https://excelano.com/apt/setup.sh | sudo sh
+```
+
+Then install it, so `apt upgrade` keeps it current:
+
+```sh
+sudo apt install blick
+```
+
+### Homebrew
+
+On macOS or Linux, tap and trust the repository once — Homebrew gates third-party taps behind explicit trust (one-time setup):
+
+```sh
+brew tap excelano/tap
+brew trust excelano/tap
+```
+
+Then install it, so `brew upgrade` keeps it current:
+
+```sh
+brew install blick
+```
+
+### Prebuilt binary (Linux and macOS)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/install.sh | sh
 ```
 
-This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `BLICK_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `BLICK_VERSION=v0.4.0 sh`.
-
-On Debian and Ubuntu, add the [Excelano apt repository](https://excelano.com/apt/) once so updates flow through `apt upgrade`:
-
-```sh
-curl -fsSL https://excelano.com/apt/setup.sh | sudo sh
-sudo apt install blick
-```
-
-With [Homebrew](https://brew.sh) on macOS or Linux, so `brew upgrade` keeps it current:
-
-```sh
-brew tap excelano/tap
-brew trust excelano/tap   # one-time: Homebrew gates third-party taps behind explicit trust
-brew install blick
-```
-
-To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/uninstall.sh | sh` (or `sudo apt remove blick` if installed via apt).
+This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `BLICK_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `BLICK_VERSION=v0.4.0 sh`. To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/uninstall.sh | sh` (or `sudo apt remove blick` if installed via apt).
 
 ### Build from source
 
