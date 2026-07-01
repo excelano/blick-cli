@@ -137,7 +137,7 @@ $ blick
     <N>      view               r<N>     reply
     d<N>     done               r        refresh
     t        show today         x        exit (mark all read)
-    H        help               q        quit
+    h        help               q        quit
 
 blick> 1
   (shows full email body)
@@ -157,7 +157,7 @@ blick> x
   All marked as read.
 ```
 
-Each short command has a full-word equivalent — `reply 4`, `done 3`, `refresh`, `exit`, `quit`, `help`, `today`. Type `H` (or `help`) at the prompt for the full reference.
+Each short command has a full-word equivalent — `reply 4`, `done 3`, `refresh`, `exit`, `quit`, `help`, `today`. Type `h` (or `help`) at the prompt for the full reference.
 
 `t` (or `today`) shows the full calendar for the day, with past events dimmed and the current event highlighted:
 

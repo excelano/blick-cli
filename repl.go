@@ -45,7 +45,7 @@ var replVerbs = []string{
 	"join", "j",
 	"presence", "p",
 	"exit", "x",
-	"help", "H",
+	"help", "h",
 	"quit", "q",
 }
 

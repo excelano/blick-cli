@@ -145,8 +145,13 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-1] + "…"
 }
 
-func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []ChatMessage, chatErr error, enableTeams bool) {
+func renderDashboard(presence *presenceState, meeting *Meeting, emails []Email, emailErr error, chats []ChatMessage, chatErr error, enableTeams bool) {
 	fmt.Println()
+
+	// Presence status line (initial open only; omitted when the fetch failed)
+	if presence != nil {
+		fmt.Printf("  %s●%s %s%s%s\n\n", presenceColor(presence.Availability), reset, bold, presenceLabel(*presence), reset)
+	}
 
 	// Meeting
 	if meeting != nil {
@@ -310,7 +315,7 @@ func renderHelp() {
 	rows := [][4]string{
 		{"<N>", "view", "r", "refresh"},
 		{"<N>r", "reply-all", "q", "quit"},
-		{"<N>d", "done", "H", "help"},
+		{"<N>d", "done", "h", "help"},
 	}
 	fmt.Printf("  %sCommon commands:%s\n", bold, reset)
 	for _, r := range rows {
@@ -341,7 +346,7 @@ func renderFullHelp() {
 		{"j", "join", "Open the current or next online meeting in the browser"},
 		{"p", "presence [state]", "Set Teams presence (available/busy/dnd/brb/away/offline)"},
 		{"x", "exit", "Mark all items as read & quit"},
-		{"H", "help", "Show this help"},
+		{"h", "help", "Show this help"},
 		{"q", "quit", "Quit"},
 	}
 	for _, r := range rows {

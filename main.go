@@ -148,7 +148,7 @@ func main() {
 		return
 	}
 
-	items := fetchAndDisplay(client, cfg.EnableTeams)
+	items := fetchAndDisplay(client, cfg.EnableTeams, true)
 	renderHelp()
 
 	if err := setupReadline(replHistoryPath(), loadContactKeys()); err != nil {
@@ -222,7 +222,7 @@ func main() {
 			return
 
 		case "refresh":
-			items = fetchAndDisplay(client, cfg.EnableTeams)
+			items = fetchAndDisplay(client, cfg.EnableTeams, false)
 			renderHelp()
 
 		case "exit":
@@ -267,7 +267,7 @@ func main() {
 			markRead(client, items[n-1])
 
 		default:
-			fmt.Printf("  Unknown command. Type %sH%s for help.\n", cyan, reset)
+			fmt.Printf("  Unknown command. Type %sh%s for help.\n", cyan, reset)
 		}
 	}
 }
@@ -284,7 +284,7 @@ func main() {
 //   r, refresh        -> ("refresh", -1)
 //   x, exit           -> ("exit",   -1)
 //   q, quit           -> ("quit",   -1)
-//   H, help           -> ("help",   -1)
+//   h, help           -> ("help",   -1)
 //   t, today          -> ("today",  -1)
 func parseCommand(input string) (string, int) {
 	fields := strings.Fields(input)
@@ -334,7 +334,7 @@ func parseCommand(input string) (string, int) {
 		return "quit", -1
 	case "x":
 		return "exit", -1
-	case "H":
+	case "h":
 		return "help", -1
 	case "t":
 		return "today", -1
@@ -389,8 +389,13 @@ func showToday(client *GraphClient) {
 	renderToday(events)
 }
 
-func fetchAndDisplay(client *GraphClient, enableTeams bool) []Item {
+// fetchAndDisplay loads and renders the dashboard. withPresence fetches and
+// shows the current Teams status line at the top — done on the initial open
+// but skipped on refresh, so re-running the dashboard doesn't keep re-reading
+// presence.
+func fetchAndDisplay(client *GraphClient, enableTeams, withPresence bool) []Item {
 	var (
+		presence   *presenceState
 		meeting    *Meeting
 		emails     []Email
 		chats      []ChatMessage
@@ -423,9 +428,21 @@ func fetchAndDisplay(client *GraphClient, enableTeams bool) []Item {
 		}()
 	}
 
+	// Presence is best-effort: a failure just omits the status line rather
+	// than disrupting the dashboard.
+	if withPresence {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if p, err := client.getPresence(); err == nil {
+				presence = &p
+			}
+		}()
+	}
+
 	wg.Wait()
 
-	renderDashboard(meeting, emails, emailErr, chats, chatErr, enableTeams)
+	renderDashboard(presence, meeting, emails, emailErr, chats, chatErr, enableTeams)
 
 	// Chats are numbered ahead of emails, matching renderDashboard's order.
 	var items []Item

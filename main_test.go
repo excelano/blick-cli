@@ -34,7 +34,7 @@ func TestParseCommand(t *testing.T) {
 		{"quit", "quit", -1},
 		{"x", "exit", -1},
 		{"exit", "exit", -1},
-		{"H", "help", -1},
+		{"h", "help", -1},
 		{"help", "help", -1},
 		{"t", "today", -1},
 		{"today", "today", -1},

@@ -46,6 +46,22 @@ func presenceKeys() string {
 	return strings.Join(keys, " | ")
 }
 
+// presenceColor maps an availability to the dashboard status-dot color. The
+// text label always carries the meaning; the color is a secondary cue (and
+// non-color-safe, so it never stands alone).
+func presenceColor(availability string) string {
+	switch availability {
+	case "Available", "AvailableIdle":
+		return green
+	case "Busy", "BusyIdle", "DoNotDisturb":
+		return red
+	case "Away", "BeRightBack":
+		return yellow
+	default: // Offline, PresenceUnknown, and anything unexpected
+		return dim
+	}
+}
+
 // presenceLabel renders a read presence for display, appending the activity
 // only when it adds information beyond the availability.
 func presenceLabel(p presenceState) string {
