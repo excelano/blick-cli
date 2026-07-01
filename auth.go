@@ -14,20 +14,21 @@ import (
 )
 
 func getScopes(cfg Config) []string {
+	// Presence.ReadWrite covers both the manual `presence` command and the
+	// optional heartbeat, so it's always requested — independent of the
+	// heartbeat toggle, which only controls the auto-nudge behavior.
 	s := []string{
 		"User.Read",
 		"Mail.ReadWrite",
 		"Mail.Send",
 		"Calendars.Read",
 		"People.Read",
+		"Presence.ReadWrite",
 		"offline_access",
 	}
 	if cfg.EnableTeams {
 		s = append(s, "Chat.ReadWrite")
 		s = append(s, "Chat.Create")
-	}
-	if cfg.PresenceHeartbeat {
-		s = append(s, "Presence.ReadWrite")
 	}
 	return s
 }

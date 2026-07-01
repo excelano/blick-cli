@@ -42,6 +42,7 @@ var replVerbs = []string{
 	"refresh", "r",
 	"today", "t",
 	"join", "j",
+	"presence", "p",
 	"exit", "x",
 	"help", "H",
 	"quit", "q",
@@ -129,11 +130,19 @@ func newReplCompleter(contactKeys []string) readline.AutoCompleter {
 		"email": true, "e": true,
 		"chat": true, "c": true,
 	}
+	presenceVerbs := map[string]bool{"presence": true, "p": true}
+	presencePC := make([]readline.PrefixCompleterInterface, len(presenceOptions))
+	for i, o := range presenceOptions {
+		presencePC[i] = readline.PcItem(o.key)
+	}
 	items := make([]readline.PrefixCompleterInterface, 0, len(replVerbs))
 	for _, v := range replVerbs {
-		if composeVerbs[v] {
+		switch {
+		case composeVerbs[v]:
 			items = append(items, readline.PcItem(v, contactPC...))
-		} else {
+		case presenceVerbs[v]:
+			items = append(items, readline.PcItem(v, presencePC...))
+		default:
 			items = append(items, readline.PcItem(v))
 		}
 	}

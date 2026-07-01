@@ -312,6 +312,7 @@ func renderFullHelp() {
 		{"r", "refresh", "Reload the dashboard"},
 		{"t", "today", "Show today's calendar"},
 		{"j", "join", "Open the current or next online meeting in the browser"},
+		{"p", "presence [state]", "Set Teams presence (available/busy/dnd/brb/away/offline)"},
 		{"x", "exit", "Mark all items as read & quit"},
 		{"H", "help", "Show this help"},
 		{"q", "quit", "Quit"},

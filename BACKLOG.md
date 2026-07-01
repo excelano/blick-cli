@@ -46,10 +46,6 @@ _(empty — pick the next item from the sections below.)_
 
 Lower priority — David's note. Captured for future.
 
-### Manual presence set
-
-`blick presence [available | busy | dnd | brb | away | offline]` as a one-shot shell command that sets presence and exits. In the REPL, `p`/`presence` follows the same verb pattern as the other short/long pairs, taking the same state argument. Bare `presence` (no state) reports the current presence rather than erroring, per the no-arg-reports-state convention. Uses Graph's `setUserPreferredPresence` (1-day expiration) plus a session `setPresence` (PT1H) so the override holds even when no other client is running. Some presence infrastructure already exists (`presence.go`, the `maybeHeartbeatPresence` startup call), so this builds on that rather than starting clean. Mirrors iOS's presence menu.
-
 ### DND timer
 
 `dnd 30m`, `dnd 1h`, etc. — convenience wrapper that sets DND with a finite expiration via the same `setPresence` call but with a shorter `expirationDuration`. Useful for focus blocks.

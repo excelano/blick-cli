@@ -42,6 +42,25 @@ func (g *GraphClient) setPresenceSession(sessionID, availability, activity, expi
 	return err
 }
 
+// setUserPreferredPresence sets the user's manually chosen presence — the same
+// override the Teams status picker writes. It takes precedence over
+// session/app-computed presence and persists (until it expires or is changed)
+// even with no Teams client running, which is why the manual `presence` command
+// uses it rather than a per-session setPresence. An empty expiration omits the
+// duration (Graph applies its default); otherwise expiration is an ISO 8601
+// duration like "PT8H". Requires Presence.ReadWrite.
+func (g *GraphClient) setUserPreferredPresence(availability, activity, expiration string) error {
+	body := map[string]string{
+		"availability": availability,
+		"activity":     activity,
+	}
+	if expiration != "" {
+		body["expirationDuration"] = expiration
+	}
+	_, err := g.post("/me/presence/setUserPreferredPresence", body)
+	return err
+}
+
 // maybeHeartbeatPresence implements the "nudge Away → Available" behavior. If
 // presence_heartbeat is on and the user is currently Away, register an
 // Available session for one hour. Best-effort: any failure is reported but
