@@ -73,6 +73,88 @@ func TestStripHTMLPreservesLinks(t *testing.T) {
 	}
 }
 
+func TestUnwrapSafeLink(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "amp-encoded separators",
+			in:   `https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fexample.com%2Freport&amp;data=05%7Cabc&amp;reserved=0`,
+			want: "https://example.com/report",
+		},
+		{
+			name: "literal ampersand separators",
+			in:   `https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fexample.com&data=05%7Cabc`,
+			want: "https://example.com",
+		},
+		{
+			name: "tenant subdomain host",
+			in:   `https://contoso.safelinks.protection.outlook.com/?url=https%3A%2F%2Fexample.com%2Fx&amp;data=z`,
+			want: "https://example.com/x",
+		},
+		{
+			name: "uppercase host still matches",
+			in:   `https://NAM06.SafeLinks.Protection.Outlook.com/?url=https%3A%2F%2Fexample.com&amp;data=z`,
+			want: "https://example.com",
+		},
+		{
+			name: "double-encoded nested query recovered",
+			in:   `https://nam06.safelinks.protection.outlook.com/?url=https%3A%2F%2Fexample.com%2Fa%3Fx%3D1%26y%3D2&amp;data=z`,
+			want: "https://example.com/a?x=1&y=2",
+		},
+		{
+			name: "non-safelinks url with url param untouched",
+			in:   `https://example.com/redirect?url=https%3A%2F%2Fevil.com`,
+			want: `https://example.com/redirect?url=https%3A%2F%2Fevil.com`,
+		},
+		{
+			name: "safelinks host without url param untouched",
+			in:   `https://nam12.safelinks.protection.outlook.com/`,
+			want: `https://nam12.safelinks.protection.outlook.com/`,
+		},
+		{
+			name: "plain url untouched",
+			in:   "https://example.com/foo",
+			want: "https://example.com/foo",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := unwrapSafeLink(c.in); got != c.want {
+				t.Errorf("unwrapSafeLink(%q) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}
+
+func TestStripHTMLUnwrapsSafeLinks(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "named safelink keeps original destination",
+			in:   `See <a href="https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fexample.com%2Freport&amp;data=05%7Cabc&amp;reserved=0">the report</a>.`,
+			want: "See the report (https://example.com/report).",
+		},
+		{
+			name: "safelink whose text is the original url collapses",
+			in:   `<a href="https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fexample.com&amp;data=z">https://example.com</a>`,
+			want: "https://example.com",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := stripHTML(c.in); got != c.want {
+				t.Errorf("stripHTML(%q) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}
+
 func TestStripHTMLBasics(t *testing.T) {
 	cases := []struct {
 		name string

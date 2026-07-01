@@ -224,6 +224,33 @@ var entityMap = map[string]string{
 	"&apos;": "'",
 }
 
+// safeLinkSuffix is the host suffix of Outlook ATP SafeLinks wrapper URLs,
+// e.g. nam12.safelinks.protection.outlook.com.
+const safeLinkSuffix = ".safelinks.protection.outlook.com"
+
+// unwrapSafeLink returns the original destination when href is an Outlook ATP
+// SafeLinks wrapper (https://<x>.safelinks.protection.outlook.com/?url=...),
+// otherwise href unchanged. Guarded tightly: only that host and only when the
+// url param is present are touched, so every other URL passes through as-is.
+// Runs before entity decoding, when the href still carries &amp; separators;
+// url.Values skips those amp;… segments (they hold a semicolon) and still
+// recovers the clean, percent-decoded url param.
+func unwrapSafeLink(href string) string {
+	u, err := url.Parse(href)
+	if err != nil {
+		return href
+	}
+	host := strings.ToLower(u.Hostname())
+	if host != "safelinks.protection.outlook.com" &&
+		!strings.HasSuffix(host, safeLinkSuffix) {
+		return href
+	}
+	if orig := u.Query().Get("url"); orig != "" {
+		return orig
+	}
+	return href
+}
+
 // rewriteAnchors turns <a href="URL">text</a> into visible text that keeps the
 // destination, so the general tag strip in stripHTML doesn't discard the URL.
 // Terminals that auto-linkify make the surviving URL clickable again. Named
@@ -232,7 +259,7 @@ var entityMap = map[string]string{
 func rewriteAnchors(s string) string {
 	return anchorRe.ReplaceAllStringFunc(s, func(m string) string {
 		sub := anchorRe.FindStringSubmatch(m)
-		href := strings.TrimSpace(sub[1])
+		href := unwrapSafeLink(strings.TrimSpace(sub[1]))
 		text := strings.TrimSpace(htmlTagRe.ReplaceAllString(sub[2], ""))
 		if href == "" || strings.HasPrefix(href, "#") ||
 			strings.HasPrefix(strings.ToLower(href), "javascript:") {
