@@ -180,29 +180,7 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 		fmt.Printf("  📅 %sNo upcoming meetings%s\n\n", dim, reset)
 	}
 
-	// Emails
-	if emailErr != nil {
-		fmt.Printf("  📧 %sCould not load emails: %v%s\n\n", red, emailErr, reset)
-	} else if len(emails) == 0 {
-		fmt.Printf("  📧 %sNo unread emails%s\n\n", dim, reset)
-	} else {
-		fmt.Printf("  📧 %sunread emails (%d):%s\n", bold, len(emails), reset)
-		for i, e := range emails {
-			clip := ""
-			if e.HasAttachments {
-				clip = " 📎"
-			}
-			fmt.Printf("    %s%d.%s %s — %q%s  %s(%s · %s)%s\n",
-				cyan, i+1, reset,
-				e.From,
-				truncate(e.Subject, 50),
-				clip,
-				dim, relativeTime(e.Received), absoluteTime(e.Received), reset)
-		}
-		fmt.Println()
-	}
-
-	// Chats
+	// Chats (shown above emails; numbered first)
 	if !enableTeams {
 		fmt.Printf("  💬 %sTeams disabled (set \"enable_teams\": true in config to enable)%s\n\n", dim, reset)
 	} else if chatErr != nil {
@@ -210,15 +188,37 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 	} else if len(chats) == 0 {
 		fmt.Printf("  💬 %sNo unread chats%s\n\n", dim, reset)
 	} else {
-		offset := len(emails)
 		fmt.Printf("  💬 %sunread chats (%d):%s\n", bold, len(chats), reset)
 		for i, c := range chats {
 			preview := truncate(c.Preview, 40)
 			fmt.Printf("    %s%d.%s %s — %q  %s(%s · %s)%s\n",
-				cyan, offset+i+1, reset,
+				cyan, i+1, reset,
 				c.Topic,
 				preview,
 				dim, relativeTime(c.Sent), absoluteTime(c.Sent), reset)
+		}
+		fmt.Println()
+	}
+
+	// Emails (numbered after chats)
+	if emailErr != nil {
+		fmt.Printf("  📧 %sCould not load emails: %v%s\n\n", red, emailErr, reset)
+	} else if len(emails) == 0 {
+		fmt.Printf("  📧 %sNo unread emails%s\n\n", dim, reset)
+	} else {
+		offset := len(chats)
+		fmt.Printf("  📧 %sunread emails (%d):%s\n", bold, len(emails), reset)
+		for i, e := range emails {
+			clip := ""
+			if e.HasAttachments {
+				clip = " 📎"
+			}
+			fmt.Printf("    %s%d.%s %s — %q%s  %s(%s · %s)%s\n",
+				cyan, offset+i+1, reset,
+				e.From,
+				truncate(e.Subject, 50),
+				clip,
+				dim, relativeTime(e.Received), absoluteTime(e.Received), reset)
 		}
 		fmt.Println()
 	}

@@ -395,12 +395,13 @@ func fetchAndDisplay(client *GraphClient, enableTeams bool) []Item {
 
 	renderDashboard(meeting, emails, emailErr, chats, chatErr, enableTeams)
 
+	// Chats are numbered ahead of emails, matching renderDashboard's order.
 	var items []Item
-	for i := range emails {
-		items = append(items, Item{Kind: "email", Email: &emails[i]})
-	}
 	for i := range chats {
 		items = append(items, Item{Kind: "chat", Chat: &chats[i]})
+	}
+	for i := range emails {
+		items = append(items, Item{Kind: "email", Email: &emails[i]})
 	}
 
 	return items
