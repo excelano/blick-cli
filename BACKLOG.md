@@ -12,14 +12,6 @@ _(empty — pick the next item from the sections below.)_
 
 ## Compose & messaging extensions
 
-### CC / BCC on email compose
-
-`--cc alice,bob` and `--bcc carol` flags on `email`. Parse extends `parseEmailArgs`; recipients resolve through the same `store.Resolve` flow.
-
-### Quote original in reply
-
-When `reply N` opens, pre-fill the body with `> ` -prefixed quoted lines from the original message (truncated to first ~20 lines), cursor positioned above the quote. Optional — many users prefer top-posting clean. Could be a config toggle `quote_in_reply: true`.
-
 ### Drafts list / resume / delete
 
 `drafts list` shows the timestamped files in `~/.config/blick/drafts/` written by `saveDraftCopy` on send failure. `drafts resume <id>` reopens the compose flow pre-filled. `drafts delete <id>` removes one. Closes the loop on the existing save-on-failure behavior.
@@ -56,7 +48,7 @@ Lower priority — David's note. Captured for future.
 
 ### Manual presence set
 
-`presence available`, `presence busy`, `presence dnd`, `presence brb`, `presence away`. Uses Graph's `setUserPreferredPresence` (1-day expiration) plus a session via `setPresence` (PT1H) so the override holds even when no other client is running. Mirrors iOS's presence menu exactly.
+`blick presence [available | busy | dnd | brb | away | offline]` as a one-shot shell command that sets presence and exits. In the REPL, `p`/`presence` follows the same verb pattern as the other short/long pairs, taking the same state argument. Bare `presence` (no state) reports the current presence rather than erroring, per the no-arg-reports-state convention. Uses Graph's `setUserPreferredPresence` (1-day expiration) plus a session `setPresence` (PT1H) so the override holds even when no other client is running. Some presence infrastructure already exists (`presence.go`, the `maybeHeartbeatPresence` startup call), so this builds on that rather than starting clean. Mirrors iOS's presence menu.
 
 ### DND timer
 

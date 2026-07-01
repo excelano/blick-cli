@@ -14,16 +14,16 @@ import (
 // `reply N` and `chat`. --subject pre-fills the subject so quick
 // one-liners can skip that prompt.
 func runEmail(client *GraphClient, args []string) {
-	positional, subject, attachPaths, err := parseEmailArgs(args)
+	ca, err := parseEmailArgs(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if len(positional) == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: blick email <contact> [more contacts...] [--subject \"...\"] [--attach file]")
+	if len(ca.Recipients) == 0 {
+		fmt.Fprintln(os.Stderr, "Usage: blick email <contact> [more contacts...] [--cc ...] [--bcc ...] [--subject \"...\"] [--attach file]")
 		os.Exit(1)
 	}
-	if err := composeAndSend(client, positional, subject, attachPaths, newShellComposeReader()); err != nil {
+	if err := composeAndSend(client, ca, newShellComposeReader()); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -32,49 +32,71 @@ func runEmail(client *GraphClient, args []string) {
 // replEmail is the REPL-side entry. Accepts the same --subject/-s flag
 // as the shell so muscle memory from one mode doesn't break the other.
 func replEmail(client *GraphClient, args []string) {
-	positional, subject, attachPaths, err := parseEmailArgs(args)
+	ca, err := parseEmailArgs(args)
 	if err != nil {
 		fmt.Printf("  %s%v%s\n", red, err, reset)
 		return
 	}
-	if len(positional) == 0 {
-		fmt.Printf("  Usage: %semail <contact> [more contacts...] [--subject \"...\"] [--attach file]%s\n", cyan, reset)
+	if len(ca.Recipients) == 0 {
+		fmt.Printf("  Usage: %semail <contact> [more contacts...] [--cc ...] [--bcc ...] [--subject \"...\"] [--attach file]%s\n", cyan, reset)
 		return
 	}
-	if err := composeAndSend(client, positional, subject, attachPaths, replComposeReader{}); err != nil {
+	if err := composeAndSend(client, ca, replComposeReader{}); err != nil {
 		fmt.Printf("  %sError: %v%s\n", red, err, reset)
 	}
 }
 
-// parseEmailArgs splits compose args into recipients + subject + attachment
-// paths. Shared between shell and REPL entry points so flag handling stays
-// consistent. --subject/-s consumes the next arg as the subject value;
-// --attach/-a consumes the next arg as a file path and repeats for multiple
-// files. Positional recipients are comma-tolerant: `alice bob`, `alice,bob`,
-// and `alice, bob` all parse as two recipients.
-func parseEmailArgs(args []string) ([]string, string, []string, error) {
-	var subject string
-	positional := []string{}
-	attachments := []string{}
+// composeArgs is the parsed form of an `email` command line: the To
+// recipients, optional Cc/Bcc, subject, and attachment paths. A struct keeps
+// the growing set of recipient lists named rather than positional.
+type composeArgs struct {
+	Recipients []string
+	Cc         []string
+	Bcc        []string
+	Subject    string
+	Attach     []string
+}
+
+// parseEmailArgs splits compose args into To recipients + Cc/Bcc + subject +
+// attachment paths. Shared between shell and REPL entry points so flag
+// handling stays consistent. --subject/-s consumes the next arg as the
+// subject; --attach/-a a file path (repeatable); --cc/--bcc a recipient list
+// (repeatable, and comma-tolerant like the positional To). Positional
+// recipients and --cc/--bcc values are comma-tolerant: `alice bob`,
+// `alice,bob`, and `alice, bob` all parse as two recipients.
+func parseEmailArgs(args []string) (composeArgs, error) {
+	var ca composeArgs
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--subject", "-s":
 			if i+1 >= len(args) {
-				return nil, "", nil, fmt.Errorf("--subject requires a value")
+				return composeArgs{}, fmt.Errorf("--subject requires a value")
 			}
-			subject = args[i+1]
+			ca.Subject = args[i+1]
+			i++
+		case "--cc":
+			if i+1 >= len(args) {
+				return composeArgs{}, fmt.Errorf("--cc requires a value")
+			}
+			ca.Cc = append(ca.Cc, splitRecipients(args[i+1:i+2])...)
+			i++
+		case "--bcc":
+			if i+1 >= len(args) {
+				return composeArgs{}, fmt.Errorf("--bcc requires a value")
+			}
+			ca.Bcc = append(ca.Bcc, splitRecipients(args[i+1:i+2])...)
 			i++
 		case "--attach", "-a":
 			if i+1 >= len(args) {
-				return nil, "", nil, fmt.Errorf("--attach requires a file path")
+				return composeArgs{}, fmt.Errorf("--attach requires a file path")
 			}
-			attachments = append(attachments, args[i+1])
+			ca.Attach = append(ca.Attach, args[i+1])
 			i++
 		default:
-			positional = append(positional, splitRecipients(args[i:i+1])...)
+			ca.Recipients = append(ca.Recipients, splitRecipients(args[i:i+1])...)
 		}
 	}
-	return positional, subject, attachments, nil
+	return ca, nil
 }
 
 // splitRecipients expands raw tokens into contact handles, splitting each on
@@ -128,29 +150,44 @@ type composeReader interface {
 // gathers Subject and body via the injected reader, and sends.
 // Unknown handles fail before any prompt opens so the user fixes a typo
 // without losing a draft they haven't typed yet.
-func composeAndSend(client *GraphClient, recipients []string, subject string, attachPaths []string, reader composeReader) error {
+func composeAndSend(client *GraphClient, ca composeArgs, reader composeReader) error {
 	store, err := LoadContacts()
 	if err != nil {
 		return err
 	}
 
-	addrs, display, err := resolveRecipients(store, recipients)
+	toAddrs, toDisplay, err := resolveRecipients(store, ca.Recipients)
+	if err != nil {
+		return err
+	}
+	ccAddrs, ccDisplay, err := resolveRecipients(store, ca.Cc)
+	if err != nil {
+		return err
+	}
+	bccAddrs, bccDisplay, err := resolveRecipients(store, ca.Bcc)
 	if err != nil {
 		return err
 	}
 
 	// Read attachments up front so a bad path or oversized file fails
 	// before the user types a message they'd otherwise lose.
-	attachments, err := readOutgoingAttachments(attachPaths)
+	attachments, err := readOutgoingAttachments(ca.Attach)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("  %sTo:%s %s\n", bold, reset, strings.Join(display, ", "))
+	fmt.Printf("  %sTo:%s %s\n", bold, reset, strings.Join(toDisplay, ", "))
+	if len(ccDisplay) > 0 {
+		fmt.Printf("  %sCc:%s %s\n", bold, reset, strings.Join(ccDisplay, ", "))
+	}
+	if len(bccDisplay) > 0 {
+		fmt.Printf("  %sBcc:%s %s\n", bold, reset, strings.Join(bccDisplay, ", "))
+	}
 	for _, a := range attachments {
 		fmt.Printf("  %sAttach:%s %s %s(%s)%s\n", bold, reset, a.Name, dim, humanSize(len(a.Content)), reset)
 	}
 
+	subject := ca.Subject
 	if subject == "" {
 		s, ok := reader.readLine(fmt.Sprintf("  %sSubject:%s ", bold, reset))
 		if !ok {
@@ -174,8 +211,8 @@ func composeAndSend(client *GraphClient, recipients []string, subject string, at
 		return nil
 	}
 
-	if err := client.SendMail(addrs, subject, body, attachments); err != nil {
-		path, saveErr := saveDraftCopy(addrs, subject, body)
+	if err := client.SendMail(toAddrs, ccAddrs, bccAddrs, subject, body, attachments); err != nil {
+		path, saveErr := saveDraftCopy(toAddrs, ccAddrs, bccAddrs, subject, body)
 		if saveErr == nil {
 			fmt.Fprintf(os.Stderr, "  %sDraft saved to %s%s\n", dim, path, reset)
 		}
@@ -250,8 +287,9 @@ func (replComposeReader) readBody() (string, bool) {
 
 // saveDraftCopy writes the unsent draft to ~/.config/blick/drafts/ with
 // a timestamped filename so a transient Graph failure doesn't lose
-// work. Returns the path written.
-func saveDraftCopy(to []string, subject, body string) (string, error) {
+// work. Cc/Bcc headers are written only when non-empty. Returns the path
+// written.
+func saveDraftCopy(to, cc, bcc []string, subject, body string) (string, error) {
 	dir := filepath.Join(configDir(), "drafts")
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", err
@@ -259,8 +297,18 @@ func saveDraftCopy(to []string, subject, body string) (string, error) {
 	stamp := time.Now().Format("20060102-150405")
 	name := fmt.Sprintf("%s.eml", stamp)
 	path := filepath.Join(dir, name)
-	contents := fmt.Sprintf("To: %s\nSubject: %s\n\n%s\n", strings.Join(to, ", "), subject, body)
-	if err := os.WriteFile(path, []byte(contents), 0600); err != nil {
+
+	var h strings.Builder
+	fmt.Fprintf(&h, "To: %s\n", strings.Join(to, ", "))
+	if len(cc) > 0 {
+		fmt.Fprintf(&h, "Cc: %s\n", strings.Join(cc, ", "))
+	}
+	if len(bcc) > 0 {
+		fmt.Fprintf(&h, "Bcc: %s\n", strings.Join(bcc, ", "))
+	}
+	fmt.Fprintf(&h, "Subject: %s\n\n%s\n", subject, body)
+
+	if err := os.WriteFile(path, []byte(h.String()), 0600); err != nil {
 		return "", err
 	}
 	return path, nil

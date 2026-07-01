@@ -45,7 +45,7 @@ func main() {
 		fmt.Println("  inbox [days]                   Show today's chats & emails, read included (days back)")
 		fmt.Println("  join                           Open the current or next online meeting")
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
-		fmt.Println("  email <contact> [--subject]    Compose and send a message (--attach file to attach)")
+		fmt.Println("  email <contact> [--subject]    Compose and send a message (--cc, --bcc, --attach)")
 		fmt.Println("  chat <contact> [--topic]       Send a Teams chat (group when >1 contact)")
 		fmt.Println("  logout                         Clear cached credentials")
 		fmt.Println()

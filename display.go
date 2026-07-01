@@ -307,7 +307,7 @@ func renderFullHelp() {
 		{"", "forward N", "Forward the Nth email to new recipients"},
 		{"", "attach N", "List attachments on the Nth item (save/open <#>)"},
 		{"i", "inbox [N]", "Today's chats & emails, read included (N days back)"},
-		{"e <c>", "email <c>", "Compose a new email (one or more contacts)"},
+		{"e <c>", "email <c>", "Compose a new email (--cc, --bcc, --attach)"},
 		{"c <c>", "chat <c>", "Send a 1:1 or group Teams chat (--topic for group)"},
 		{"r", "refresh", "Reload the dashboard"},
 		{"t", "today", "Show today's calendar"},

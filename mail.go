@@ -206,14 +206,8 @@ func (g *GraphClient) ForwardEmail(id, comment string, to []string) error {
 	if len(to) == 0 {
 		return fmt.Errorf("no recipients")
 	}
-	recipients := make([]map[string]interface{}, len(to))
-	for i, addr := range to {
-		recipients[i] = map[string]interface{}{
-			"emailAddress": map[string]string{"address": addr},
-		}
-	}
 	body := map[string]interface{}{
-		"toRecipients": recipients,
+		"toRecipients": recipientList(to),
 	}
 	if comment != "" {
 		body["comment"] = strings.ReplaceAll(comment, "\n", "<br>")
@@ -222,24 +216,36 @@ func (g *GraphClient) ForwardEmail(id, comment string, to []string) error {
 	return err
 }
 
-// SendMail composes and sends a new message in one shot via /me/sendMail
-// (saveToSentItems defaults to true so the message lands in Sent like any
-// other Outlook send). Content type is Text — the keyboard-first compose
-// flow doesn't deal in HTML.
-func (g *GraphClient) SendMail(to []string, subject, body string, attachments []OutgoingAttachment) error {
-	if len(to) == 0 {
-		return fmt.Errorf("no recipients")
-	}
-	recipients := make([]map[string]interface{}, len(to))
-	for i, addr := range to {
-		recipients[i] = map[string]interface{}{
+// recipientList builds the Graph recipient array [{emailAddress:{address}}]
+// from SMTP addresses. Shared by SendMail (to/cc/bcc) and ForwardEmail.
+func recipientList(addrs []string) []map[string]interface{} {
+	out := make([]map[string]interface{}, len(addrs))
+	for i, addr := range addrs {
+		out[i] = map[string]interface{}{
 			"emailAddress": map[string]string{"address": addr},
 		}
+	}
+	return out
+}
+
+// SendMail composes and sends a new message in one shot via /me/sendMail
+// (saveToSentItems defaults to true so the message lands in Sent like any
+// other Outlook send). cc/bcc are added only when non-empty. Content type is
+// Text — the keyboard-first compose flow doesn't deal in HTML.
+func (g *GraphClient) SendMail(to, cc, bcc []string, subject, body string, attachments []OutgoingAttachment) error {
+	if len(to) == 0 {
+		return fmt.Errorf("no recipients")
 	}
 	message := map[string]interface{}{
 		"subject":      subject,
 		"body":         map[string]string{"contentType": "Text", "content": body},
-		"toRecipients": recipients,
+		"toRecipients": recipientList(to),
+	}
+	if len(cc) > 0 {
+		message["ccRecipients"] = recipientList(cc)
+	}
+	if len(bcc) > 0 {
+		message["bccRecipients"] = recipientList(bcc)
 	}
 	if len(attachments) > 0 {
 		encoded := make([]map[string]interface{}, len(attachments))
