@@ -24,10 +24,6 @@ _(empty — pick the next item from the sections below.)_
 
 `delete N` (moves to Deleted Items via `POST /me/messages/{id}/move`) and `move N <folder>` for archiving. Folder name resolves to ID via `/me/mailFolders`, cached per session. Both are Graph one-shot calls.
 
-### Search
-
-`search --from alice` and `search --text "X"` via Graph's `/me/messages?$search=` (KQL syntax). Results render the same way as the unread queue. Useful when scrolling unread isn't enough — e.g., "where's that email from the bank?"
-
 ### Show full thread
 
 `thread N` expands the conversation containing message N — Graph `/me/messages?$filter=conversationId eq '...'`. Renders messages in reverse-chronological with sender + date + body preview each.

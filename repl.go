@@ -36,6 +36,7 @@ var replVerbs = []string{
 	"view", "reply", "done",
 	"forward",
 	"attach",
+	"search",
 	"inbox", "i",
 	"email", "e",
 	"chat", "c",

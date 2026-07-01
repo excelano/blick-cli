@@ -43,6 +43,7 @@ func main() {
 		fmt.Println("Commands:")
 		fmt.Println("  today                          Show today's calendar and exit")
 		fmt.Println("  inbox [days]                   Show today's chats & emails, read included (days back)")
+		fmt.Println("  search [--from|--subject|--text|words]  Search mail (KQL); prints matches")
 		fmt.Println("  join                           Open the current or next online meeting")
 		fmt.Println("  presence [state]               Set Teams presence (available/busy/dnd/brb/away/offline)")
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
@@ -125,6 +126,11 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "search" {
+		runSearch(client, os.Args[2:])
+		return
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "contacts" {
 		runContacts(client, os.Args[2:])
 		return
@@ -204,6 +210,10 @@ func main() {
 		}
 		if len(fields) > 0 && (fields[0] == "inbox" || fields[0] == "i") {
 			items = replInbox(client, cfg.EnableTeams, fields[1:], items)
+			continue
+		}
+		if len(fields) > 0 && fields[0] == "search" {
+			items = replSearch(client, fields[1:], items)
 			continue
 		}
 

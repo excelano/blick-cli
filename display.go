@@ -250,6 +250,29 @@ func renderInbox(daysBack int, emails []Email, emailErr error, chats []ChatMessa
 	}
 }
 
+// renderSearch draws mail search results — emails only, numbered from 1,
+// sharing the row format with the dashboard and inbox so view/reply/done/
+// attach/forward line up. desc is the KQL echoed back in the header.
+func renderSearch(desc string, emails []Email, err error) {
+	fmt.Println()
+	fmt.Printf("  🔎 %sSearch — %s%s%s\n\n", bold, reset, desc, reset)
+
+	if err != nil {
+		fmt.Printf("  📧 %sSearch failed: %v%s\n\n", red, err, reset)
+		return
+	}
+	if len(emails) == 0 {
+		fmt.Printf("  📧 %sNo matches%s\n\n", dim, reset)
+		return
+	}
+	fmt.Printf("  📧 %smatches (%d):%s\n", bold, len(emails), reset)
+	printEmailRows(emails, 0)
+	if len(emails) >= searchEmailTop {
+		fmt.Printf("    %s(showing the first %d by relevance — refine the search for more)%s\n", dim, len(emails), reset)
+	}
+	fmt.Println()
+}
+
 // printChatRows prints the numbered chat lines shared by the dashboard and
 // inbox views. Chats are always numbered from 1 — they lead both lists.
 func printChatRows(chats []ChatMessage) {
@@ -307,6 +330,7 @@ func renderFullHelp() {
 		{"", "forward N", "Forward the Nth email to new recipients"},
 		{"", "attach N", "List attachments on the Nth item (save/open <#>)"},
 		{"i", "inbox [N]", "Today's chats & emails, read included (N days back)"},
+		{"", "search ...", "Search mail: --from, --subject, --text, or bare words"},
 		{"e <c>", "email <c>", "Compose a new email (--cc, --bcc, --attach)"},
 		{"c <c>", "chat <c>", "Send a 1:1 or group Teams chat (--topic for group)"},
 		{"r", "refresh", "Reload the dashboard"},

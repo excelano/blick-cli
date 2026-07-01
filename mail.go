@@ -78,6 +78,26 @@ func (g *GraphClient) EmailsSince(since time.Time) ([]Email, error) {
 	return parseEmails(data)
 }
 
+// SearchEmails runs a Graph mailbox $search over /me/messages and returns the
+// matches. Graph ranks $search by relevance and forbids $orderby alongside it,
+// so results come back relevance-ordered, not by date. kql is a KQL expression
+// like `from:alice` or a free-text term; it's wrapped in the double quotes
+// $search requires. Capped at searchEmailTop; the caller notes when the cap is
+// hit. Covered by Mail.Read — no extra scope.
+func (g *GraphClient) SearchEmails(kql string) ([]Email, error) {
+	query := url.Values{
+		"$search": {`"` + kql + `"`},
+		"$top":    {strconv.Itoa(searchEmailTop)},
+		"$select": {messageSelect},
+	}
+
+	data, err := g.get("/me/messages", query)
+	if err != nil {
+		return nil, err
+	}
+	return parseEmails(data)
+}
+
 func parseEmails(data []byte) ([]Email, error) {
 	var result struct {
 		Value []struct {
