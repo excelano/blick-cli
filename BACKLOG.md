@@ -60,25 +60,15 @@ Today an error during refresh prints inline and may scroll past. A persistent on
 
 ---
 
+## Reading & display
+
+### Unwrap Outlook SafeLinks
+
+Tenants with ATP rewrite every link in incoming mail through `https://<tenant>.safelinks.protection.outlook.com/?url=<percent-encoded-original>&data=...`. After the v0.9.x link-preservation fix these now survive rendering, but as the full wrapped form — clickable yet unreadable, and they leak the tenant + a tracking token. Unwrap in `rewriteAnchors` (mail.go): when the href host matches `*.safelinks.protection.outlook.com` and a `url` query param is present, parse it, percent-decode, and substitute the original back. Guard tightly — only that host, only when `url` is set; leave every other URL untouched. Covers the reference-attachment display path too if that ever renders hrefs.
+
 ## Attachments
 
-Attachment handling as a category is too large to scope all at once. Captured here as smaller, independent slices.
-
-### List attachments on a message
-
-`attach N` against the unread list calls `/me/messages/{id}/attachments` and prints `[1] name.pdf (124 KB)` style rows. No download. Read-only inspection.
-
-### Save an attachment to disk
-
-`attach save N <index>` writes the attachment to the current working directory (or `--to <path>`). Graph returns base64-encoded content for file attachments; decode and write at mode 0644. Refuse silently on item attachments (calendar invites, embedded messages) — those need different handling.
-
-### Open an attachment in the default app
-
-`attach open N <index>` writes to a temp file in `$XDG_RUNTIME_DIR` (or `/tmp`) and shells out to `xdg-open`. File is left for the OS to clean up on session end. Useful for one-off "let me just look at the PDF" without polluting `~/Downloads`.
-
-### Send an attachment
-
-`email alice --attach file.pdf` (and `--attach file1.pdf --attach file2.png` for multiple) on the compose flow. Reads the file, base64-encodes, includes in the `attachments` array of the `/me/sendMail` payload. Graph caps file attachments at ~3 MB total per message; for larger files the upload-session flow is needed — defer that to a separate slice. Plain files only — no inline images, no item attachments.
+Attachment handling as a category is too large to scope all at once. Captured here as smaller, independent slices. List/save/open (receive) and `--attach` (send) shipped in v0.9.x; what remains:
 
 ### Strip attachments when forwarding
 
