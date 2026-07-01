@@ -35,6 +35,7 @@ func (identityPainter) Paint(line []rune, _ int) []rune { return line }
 var replVerbs = []string{
 	"view", "reply", "done",
 	"attach",
+	"inbox", "i",
 	"email", "e",
 	"chat", "c",
 	"refresh", "r",

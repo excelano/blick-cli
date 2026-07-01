@@ -2,6 +2,59 @@ package main
 
 import "testing"
 
+func TestParseEmails(t *testing.T) {
+	data := []byte(`{"value":[
+		{"id":"AAA","subject":"Lunch?","from":{"emailAddress":{"name":"Alice"}},
+		 "toRecipients":[{"emailAddress":{"name":"Bob","address":"bob@example.com"}}],
+		 "ccRecipients":[],"bodyPreview":"want to grab lunch",
+		 "receivedDateTime":"2026-07-01T14:30:00Z","hasAttachments":true},
+		{"id":"BBB","subject":"","from":{"emailAddress":{"name":""}},
+		 "toRecipients":[],"ccRecipients":[],"bodyPreview":"",
+		 "receivedDateTime":"2026-07-01T09:00:00Z","hasAttachments":false}
+	]}`)
+
+	emails, err := parseEmails(data)
+	if err != nil {
+		t.Fatalf("parseEmails: %v", err)
+	}
+	if len(emails) != 2 {
+		t.Fatalf("got %d emails, want 2", len(emails))
+	}
+
+	a := emails[0]
+	if a.ID != "AAA" || a.Subject != "Lunch?" || a.From != "Alice" || a.Preview != "want to grab lunch" {
+		t.Errorf("email[0] fields wrong: %+v", a)
+	}
+	if !a.HasAttachments {
+		t.Errorf("email[0] HasAttachments = false, want true")
+	}
+	if len(a.To) != 1 || a.To[0].Display() != "Bob" {
+		t.Errorf("email[0] To = %+v, want single Bob", a.To)
+	}
+	if a.Received.UTC().Format("2006-01-02T15:04:05Z") != "2026-07-01T14:30:00Z" {
+		t.Errorf("email[0] Received = %v, want 2026-07-01T14:30:00Z", a.Received.UTC())
+	}
+	if emails[1].HasAttachments {
+		t.Errorf("email[1] HasAttachments = true, want false")
+	}
+}
+
+func TestParseEmailsEmpty(t *testing.T) {
+	emails, err := parseEmails([]byte(`{"value":[]}`))
+	if err != nil {
+		t.Fatalf("parseEmails: %v", err)
+	}
+	if len(emails) != 0 {
+		t.Errorf("got %d emails, want 0", len(emails))
+	}
+}
+
+func TestParseEmailsMalformed(t *testing.T) {
+	if _, err := parseEmails([]byte(`{not json`)); err == nil {
+		t.Error("want error on malformed JSON, got nil")
+	}
+}
+
 func TestStripHTMLPreservesLinks(t *testing.T) {
 	cases := []struct {
 		name string

@@ -16,14 +16,32 @@ type ChatMessage struct {
 	Sent    time.Time
 }
 
+// UnreadChats returns chats with an unread last message in the past 24h —
+// the dashboard's chat panel.
+//
+// "Unread" uses Graph's per-user viewpoint.lastMessageReadDateTime: a chat is
+// unread when the last message's createdDateTime is newer than the user's
+// last-read mark. Replaces the older "last message wasn't from me" workaround
+// from when Graph didn't expose per-user chat read state. The 24h cutoff
+// stays — an unread message from last week shouldn't linger in the panel.
 func (g *GraphClient) UnreadChats() ([]ChatMessage, error) {
-	// "Unread" uses Graph's per-user viewpoint.lastMessageReadDateTime: a
-	// chat is unread when the last message's createdDateTime is newer than
-	// the user's last-read mark. Replaces the older "last message wasn't
-	// from me" workaround from when Graph didn't expose per-user chat read
-	// state. Also honors viewpoint.isHidden so chats the user hid in Teams
-	// stay hidden here. The 24h cutoff stays — an unread message from last
-	// week shouldn't linger in the panel.
+	return g.chatsFrom(time.Now().Add(-24*time.Hour), true)
+}
+
+// ChatsSince returns chats whose most recent message falls at or after
+// `since`, read included — the chat half of the inbox history view. Same
+// source and filters as UnreadChats (hidden chats and non-message events
+// dropped) minus the unread gate.
+func (g *GraphClient) ChatsSince(since time.Time) ([]ChatMessage, error) {
+	return g.chatsFrom(since, false)
+}
+
+// chatsFrom fetches /me/chats with the expanded last-message preview and
+// returns one ChatMessage per surviving chat. cutoff drops chats whose last
+// message predates it. unreadOnly additionally drops chats already read —
+// last message not newer than viewpoint.lastMessageReadDateTime. Honors
+// viewpoint.isHidden so chats the user hid in Teams stay hidden either way.
+func (g *GraphClient) chatsFrom(cutoff time.Time, unreadOnly bool) ([]ChatMessage, error) {
 	query := url.Values{
 		"$select": {"id,topic,lastMessagePreview,viewpoint"},
 		"$expand": {"lastMessagePreview"},
@@ -67,8 +85,6 @@ func (g *GraphClient) UnreadChats() ([]ChatMessage, error) {
 		return nil, err
 	}
 
-	cutoff := time.Now().Add(-24 * time.Hour)
-
 	var messages []ChatMessage
 	for _, chat := range result.Value {
 		if chat.Viewpoint != nil && chat.Viewpoint.IsHidden {
@@ -93,18 +109,21 @@ func (g *GraphClient) UnreadChats() ([]ChatMessage, error) {
 			continue
 		}
 
-		// The real read-state check. lastMessageReadDateTime can be
-		// "0001-01-01T00:00:00Z" for chats the user has never opened; the
-		// comparison still works because that's older than any real sent
+		// The real read-state check, dashboard-only. lastMessageReadDateTime
+		// can be "0001-01-01T00:00:00Z" for chats the user has never opened;
+		// the comparison still works because that's older than any real sent
 		// time. We do NOT skip chats where the last message is from the
 		// signed-in user — Teams advances lastMessageReadDateTime on send,
-		// so the viewpoint check already handles that.
-		var lastRead time.Time
-		if chat.Viewpoint != nil {
-			lastRead, _ = time.Parse(time.RFC3339Nano, chat.Viewpoint.LastMessageReadDateTime)
-		}
-		if !sent.After(lastRead) {
-			continue
+		// so the viewpoint check already handles that. The inbox view passes
+		// unreadOnly=false to keep read chats too.
+		if unreadOnly {
+			var lastRead time.Time
+			if chat.Viewpoint != nil {
+				lastRead, _ = time.Parse(time.RFC3339Nano, chat.Viewpoint.LastMessageReadDateTime)
+			}
+			if !sent.After(lastRead) {
+				continue
+			}
 		}
 
 		msg := ChatMessage{

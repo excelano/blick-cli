@@ -42,6 +42,7 @@ func main() {
 		fmt.Println()
 		fmt.Println("Commands:")
 		fmt.Println("  today                          Show today's calendar and exit")
+		fmt.Println("  inbox [days]                   Show today's chats & emails, read included (days back)")
 		fmt.Println("  join                           Open the current or next online meeting")
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
 		fmt.Println("  email <contact> [--subject]    Compose and send a message (--attach file to attach)")
@@ -113,6 +114,11 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "inbox" {
+		showInbox(client, cfg.EnableTeams, os.Args[2:])
+		return
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "contacts" {
 		runContacts(client, os.Args[2:])
 		return
@@ -180,6 +186,10 @@ func main() {
 		}
 		if len(fields) > 0 && fields[0] == "attach" {
 			replAttach(client, items, fields[1:])
+			continue
+		}
+		if len(fields) > 0 && (fields[0] == "inbox" || fields[0] == "i") {
+			items = replInbox(client, cfg.EnableTeams, fields[1:], items)
 			continue
 		}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -35,19 +36,49 @@ type Email struct {
 	HasAttachments bool
 }
 
+// inboxEmailTop caps how many messages the inbox history view pulls in one
+// window. The caller surfaces a note when the cap is hit so the truncation
+// isn't silent.
+const inboxEmailTop = 50
+
+// messageSelect is the shared $select for the message list views — the fields
+// the dashboard and inbox rows render.
+const messageSelect = "id,subject,from,toRecipients,ccRecipients,bodyPreview,receivedDateTime,hasAttachments"
+
 func (g *GraphClient) UnreadEmails() ([]Email, error) {
 	query := url.Values{
 		"$filter":  {"isRead eq false"},
 		"$orderby": {"receivedDateTime desc"},
 		"$top":     {"10"},
-		"$select":  {"id,subject,from,toRecipients,ccRecipients,bodyPreview,receivedDateTime,hasAttachments"},
+		"$select":  {messageSelect},
 	}
 
 	data, err := g.get("/me/messages", query)
 	if err != nil {
 		return nil, err
 	}
+	return parseEmails(data)
+}
 
+// EmailsSince returns messages received at or after `since`, read included,
+// newest first — the email half of the inbox history view. Capped at
+// inboxEmailTop; the caller notes when the window overflows.
+func (g *GraphClient) EmailsSince(since time.Time) ([]Email, error) {
+	query := url.Values{
+		"$filter":  {fmt.Sprintf("receivedDateTime ge %s", since.UTC().Format(time.RFC3339))},
+		"$orderby": {"receivedDateTime desc"},
+		"$top":     {strconv.Itoa(inboxEmailTop)},
+		"$select":  {messageSelect},
+	}
+
+	data, err := g.get("/me/messages", query)
+	if err != nil {
+		return nil, err
+	}
+	return parseEmails(data)
+}
+
+func parseEmails(data []byte) ([]Email, error) {
 	var result struct {
 		Value []struct {
 			ID   string `json:"id"`

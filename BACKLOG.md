@@ -10,12 +10,6 @@ _(empty — pick the next item from the sections below.)_
 
 ---
 
-## Reading & display
-
-### `inbox` / `i` — today's messages, read and unread
-
-New verb `inbox` (short `i`) shows today's chats and emails together — not just the unread queue the dashboard renders, but everything from local midnight to now, read included. Chats above emails, same numbering and item-verb wiring as the dashboard so `view N` / `reply N` / `attach N` work against the result. An optional count widens the window: `inbox 3` covers the last three days (still local-midnight anchored, i.e. today plus the two prior days). Bare `inbox` is the one-day form. Graph: emails via `/me/messages?$filter=receivedDateTime ge <iso>` on the window start; chats via the per-chat message pull already used for previews, filtered to the window. This is a deliberate step toward light history over the strict action-now scope, so keep it a distinct view — don't fold it into the unread dashboard.
-
 ## Attachments
 
 Attachment handling as a category is too large to scope all at once. Captured here as smaller, independent slices. List/save/open (receive) and `--attach` (send) shipped in v0.9.x; what remains:

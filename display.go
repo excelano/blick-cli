@@ -189,14 +189,7 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 		fmt.Printf("  💬 %sNo unread chats%s\n\n", dim, reset)
 	} else {
 		fmt.Printf("  💬 %sunread chats (%d):%s\n", bold, len(chats), reset)
-		for i, c := range chats {
-			preview := truncate(c.Preview, 40)
-			fmt.Printf("    %s%d.%s %s — %q  %s(%s · %s)%s\n",
-				cyan, i+1, reset,
-				c.Topic,
-				preview,
-				dim, relativeTime(c.Sent), absoluteTime(c.Sent), reset)
-		}
+		printChatRows(chats)
 		fmt.Println()
 	}
 
@@ -206,21 +199,84 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 	} else if len(emails) == 0 {
 		fmt.Printf("  📧 %sNo unread emails%s\n\n", dim, reset)
 	} else {
-		offset := len(chats)
 		fmt.Printf("  📧 %sunread emails (%d):%s\n", bold, len(emails), reset)
-		for i, e := range emails {
-			clip := ""
-			if e.HasAttachments {
-				clip = " 📎"
-			}
-			fmt.Printf("    %s%d.%s %s — %q%s  %s(%s · %s)%s\n",
-				cyan, offset+i+1, reset,
-				e.From,
-				truncate(e.Subject, 50),
-				clip,
-				dim, relativeTime(e.Received), absoluteTime(e.Received), reset)
+		printEmailRows(emails, len(chats))
+		fmt.Println()
+	}
+}
+
+// renderInbox draws the inbox history view — chats above emails, read
+// included — sharing the row format and chats-first numbering with the
+// dashboard so the same view/reply/done/attach verbs line up. emailsTruncated
+// adds a note when the window overflowed inboxEmailTop.
+func renderInbox(daysBack int, emails []Email, emailErr error, chats []ChatMessage, chatErr error, enableTeams, emailsTruncated bool) {
+	fmt.Println()
+
+	// The window always includes today, so it spans daysBack+1 calendar days.
+	span := "today"
+	switch total := daysBack + 1; {
+	case total == 2:
+		span = "today and yesterday"
+	case total > 2:
+		span = fmt.Sprintf("the last %d days", total)
+	}
+	fmt.Printf("  📥 %sInbox — %s%s %s(read included)%s\n\n", bold, span, reset, dim, reset)
+
+	// Chats (numbered first)
+	if !enableTeams {
+		fmt.Printf("  💬 %sTeams disabled (set \"enable_teams\": true in config to enable)%s\n\n", dim, reset)
+	} else if chatErr != nil {
+		fmt.Printf("  💬 %sCould not load chats: %v%s\n\n", red, chatErr, reset)
+	} else if len(chats) == 0 {
+		fmt.Printf("  💬 %sNo chats in this window%s\n\n", dim, reset)
+	} else {
+		fmt.Printf("  💬 %schats (%d):%s\n", bold, len(chats), reset)
+		printChatRows(chats)
+		fmt.Println()
+	}
+
+	// Emails (numbered after chats)
+	if emailErr != nil {
+		fmt.Printf("  📧 %sCould not load emails: %v%s\n\n", red, emailErr, reset)
+	} else if len(emails) == 0 {
+		fmt.Printf("  📧 %sNo emails in this window%s\n\n", dim, reset)
+	} else {
+		fmt.Printf("  📧 %semails (%d):%s\n", bold, len(emails), reset)
+		printEmailRows(emails, len(chats))
+		if emailsTruncated {
+			fmt.Printf("    %s(showing the %d most recent — narrow the window for older mail)%s\n", dim, len(emails), reset)
 		}
 		fmt.Println()
+	}
+}
+
+// printChatRows prints the numbered chat lines shared by the dashboard and
+// inbox views. Chats are always numbered from 1 — they lead both lists.
+func printChatRows(chats []ChatMessage) {
+	for i, c := range chats {
+		fmt.Printf("    %s%d.%s %s — %q  %s(%s · %s)%s\n",
+			cyan, i+1, reset,
+			c.Topic,
+			truncate(c.Preview, 40),
+			dim, relativeTime(c.Sent), absoluteTime(c.Sent), reset)
+	}
+}
+
+// printEmailRows prints the numbered email lines shared by the dashboard and
+// inbox views. offset is the count of chats printed before them, so the
+// numbering continues past the chat block.
+func printEmailRows(emails []Email, offset int) {
+	for i, e := range emails {
+		clip := ""
+		if e.HasAttachments {
+			clip = " 📎"
+		}
+		fmt.Printf("    %s%d.%s %s — %q%s  %s(%s · %s)%s\n",
+			cyan, offset+i+1, reset,
+			e.From,
+			truncate(e.Subject, 50),
+			clip,
+			dim, relativeTime(e.Received), absoluteTime(e.Received), reset)
 	}
 }
 
@@ -249,6 +305,7 @@ func renderFullHelp() {
 		{"<N>r", "reply N", "Reply-all to the Nth item (ed-style editor)"},
 		{"<N>d", "done N", "Mark the Nth item as read"},
 		{"", "attach N", "List attachments on the Nth item (save/open <#>)"},
+		{"i", "inbox [N]", "Today's chats & emails, read included (N days back)"},
 		{"e <c>", "email <c>", "Compose a new email (one or more contacts)"},
 		{"c <c>", "chat <c>", "Send a 1:1 or group Teams chat (--topic for group)"},
 		{"r", "refresh", "Reload the dashboard"},
