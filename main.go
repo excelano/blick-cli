@@ -44,7 +44,7 @@ func main() {
 		fmt.Println("  today                          Show today's calendar and exit")
 		fmt.Println("  join                           Open the current or next online meeting")
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
-		fmt.Println("  email <contact> [--subject]    Compose and send a message")
+		fmt.Println("  email <contact> [--subject]    Compose and send a message (--attach file to attach)")
 		fmt.Println("  chat <contact> [--topic]       Send a Teams chat (group when >1 contact)")
 		fmt.Println("  logout                         Clear cached credentials")
 		fmt.Println()
@@ -176,6 +176,10 @@ func main() {
 				continue
 			}
 			replChat(client, fields[1:])
+			continue
+		}
+		if len(fields) > 0 && fields[0] == "attach" {
+			replAttach(client, items, fields[1:])
 			continue
 		}
 

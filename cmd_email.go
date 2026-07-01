@@ -14,16 +14,16 @@ import (
 // `reply N` and `chat`. --subject pre-fills the subject so quick
 // one-liners can skip that prompt.
 func runEmail(client *GraphClient, args []string) {
-	positional, subject, err := parseEmailArgs(args)
+	positional, subject, attachPaths, err := parseEmailArgs(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	if len(positional) == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: blick email <contact> [more contacts...] [--subject \"...\"]")
+		fmt.Fprintln(os.Stderr, "Usage: blick email <contact> [more contacts...] [--subject \"...\"] [--attach file]")
 		os.Exit(1)
 	}
-	if err := composeAndSend(client, positional, subject, newShellComposeReader()); err != nil {
+	if err := composeAndSend(client, positional, subject, attachPaths, newShellComposeReader()); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -32,35 +32,43 @@ func runEmail(client *GraphClient, args []string) {
 // replEmail is the REPL-side entry. Accepts the same --subject/-s flag
 // as the shell so muscle memory from one mode doesn't break the other.
 func replEmail(client *GraphClient, args []string) {
-	positional, subject, err := parseEmailArgs(args)
+	positional, subject, attachPaths, err := parseEmailArgs(args)
 	if err != nil {
 		fmt.Printf("  %s%v%s\n", red, err, reset)
 		return
 	}
 	if len(positional) == 0 {
-		fmt.Printf("  Usage: %semail <contact> [more contacts...] [--subject \"...\"]%s\n", cyan, reset)
+		fmt.Printf("  Usage: %semail <contact> [more contacts...] [--subject \"...\"] [--attach file]%s\n", cyan, reset)
 		return
 	}
-	if err := composeAndSend(client, positional, subject, replComposeReader{}); err != nil {
+	if err := composeAndSend(client, positional, subject, attachPaths, replComposeReader{}); err != nil {
 		fmt.Printf("  %sError: %v%s\n", red, err, reset)
 	}
 }
 
-// parseEmailArgs splits compose args into recipients + subject. Shared
-// between shell and REPL entry points so flag handling stays consistent.
-// --subject and -s both consume the next arg as the subject value.
-// Positional recipients are comma-tolerant: `alice bob`, `alice,bob`, and
-// `alice, bob` all parse as two recipients.
-func parseEmailArgs(args []string) ([]string, string, error) {
+// parseEmailArgs splits compose args into recipients + subject + attachment
+// paths. Shared between shell and REPL entry points so flag handling stays
+// consistent. --subject/-s consumes the next arg as the subject value;
+// --attach/-a consumes the next arg as a file path and repeats for multiple
+// files. Positional recipients are comma-tolerant: `alice bob`, `alice,bob`,
+// and `alice, bob` all parse as two recipients.
+func parseEmailArgs(args []string) ([]string, string, []string, error) {
 	var subject string
 	positional := []string{}
+	attachments := []string{}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--subject", "-s":
 			if i+1 >= len(args) {
-				return nil, "", fmt.Errorf("--subject requires a value")
+				return nil, "", nil, fmt.Errorf("--subject requires a value")
 			}
 			subject = args[i+1]
+			i++
+		case "--attach", "-a":
+			if i+1 >= len(args) {
+				return nil, "", nil, fmt.Errorf("--attach requires a file path")
+			}
+			attachments = append(attachments, args[i+1])
 			i++
 		default:
 			for _, part := range strings.Split(args[i], ",") {
@@ -71,7 +79,7 @@ func parseEmailArgs(args []string) ([]string, string, error) {
 			}
 		}
 	}
-	return positional, subject, nil
+	return positional, subject, attachments, nil
 }
 
 // composeReader abstracts the subject + body input for shell vs. REPL
@@ -88,7 +96,7 @@ type composeReader interface {
 // gathers Subject and body via the injected reader, and sends.
 // Unknown handles fail before any prompt opens so the user fixes a typo
 // without losing a draft they haven't typed yet.
-func composeAndSend(client *GraphClient, recipients []string, subject string, reader composeReader) error {
+func composeAndSend(client *GraphClient, recipients []string, subject string, attachPaths []string, reader composeReader) error {
 	store, err := LoadContacts()
 	if err != nil {
 		return err
@@ -109,7 +117,17 @@ func composeAndSend(client *GraphClient, recipients []string, subject string, re
 		}
 	}
 
+	// Read attachments up front so a bad path or oversized file fails
+	// before the user types a message they'd otherwise lose.
+	attachments, err := readOutgoingAttachments(attachPaths)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("  %sTo:%s %s\n", bold, reset, strings.Join(display, ", "))
+	for _, a := range attachments {
+		fmt.Printf("  %sAttach:%s %s %s(%s)%s\n", bold, reset, a.Name, dim, humanSize(len(a.Content)), reset)
+	}
 
 	if subject == "" {
 		s, ok := reader.readLine(fmt.Sprintf("  %sSubject:%s ", bold, reset))
@@ -134,7 +152,7 @@ func composeAndSend(client *GraphClient, recipients []string, subject string, re
 		return nil
 	}
 
-	if err := client.SendMail(addrs, subject, body); err != nil {
+	if err := client.SendMail(addrs, subject, body, attachments); err != nil {
 		path, saveErr := saveDraftCopy(addrs, subject, body)
 		if saveErr == nil {
 			fmt.Fprintf(os.Stderr, "  %sDraft saved to %s%s\n", dim, path, reset)

@@ -12,26 +12,32 @@ func TestParseEmailArgs(t *testing.T) {
 		in           []string
 		wantContacts []string
 		wantSubject  string
+		wantAttach   []string
 		wantErr      bool
 	}{
-		{"single recipient, no subject", []string{"alice"}, []string{"alice"}, "", false},
-		{"multi recipient, no subject", []string{"alice", "bob"}, []string{"alice", "bob"}, "", false},
-		{"long flag", []string{"alice", "--subject", "Hello"}, []string{"alice"}, "Hello", false},
-		{"short flag", []string{"alice", "-s", "Hello"}, []string{"alice"}, "Hello", false},
-		{"flag interleaved with recipients", []string{"alice", "--subject", "Hi", "bob"}, []string{"alice", "bob"}, "Hi", false},
-		{"flag before recipients", []string{"--subject", "Hi", "alice"}, []string{"alice"}, "Hi", false},
-		{"trailing --subject errors", []string{"alice", "--subject"}, nil, "", true},
-		{"trailing -s errors", []string{"alice", "-s"}, nil, "", true},
-		{"empty input", []string{}, []string{}, "", false},
-		{"comma-separated single arg", []string{"alice,bob"}, []string{"alice", "bob"}, "", false},
-		{"comma-separated with spaces", []string{"alice,", "bob,", "carol"}, []string{"alice", "bob", "carol"}, "", false},
-		{"mixed comma and space", []string{"alice,bob", "carol"}, []string{"alice", "bob", "carol"}, "", false},
-		{"empty comma parts dropped", []string{"alice,,bob"}, []string{"alice", "bob"}, "", false},
-		{"trailing comma dropped", []string{"alice,"}, []string{"alice"}, "", false},
+		{"single recipient, no subject", []string{"alice"}, []string{"alice"}, "", []string{}, false},
+		{"multi recipient, no subject", []string{"alice", "bob"}, []string{"alice", "bob"}, "", []string{}, false},
+		{"long flag", []string{"alice", "--subject", "Hello"}, []string{"alice"}, "Hello", []string{}, false},
+		{"short flag", []string{"alice", "-s", "Hello"}, []string{"alice"}, "Hello", []string{}, false},
+		{"flag interleaved with recipients", []string{"alice", "--subject", "Hi", "bob"}, []string{"alice", "bob"}, "Hi", []string{}, false},
+		{"flag before recipients", []string{"--subject", "Hi", "alice"}, []string{"alice"}, "Hi", []string{}, false},
+		{"trailing --subject errors", []string{"alice", "--subject"}, nil, "", nil, true},
+		{"trailing -s errors", []string{"alice", "-s"}, nil, "", nil, true},
+		{"empty input", []string{}, []string{}, "", []string{}, false},
+		{"comma-separated single arg", []string{"alice,bob"}, []string{"alice", "bob"}, "", []string{}, false},
+		{"comma-separated with spaces", []string{"alice,", "bob,", "carol"}, []string{"alice", "bob", "carol"}, "", []string{}, false},
+		{"mixed comma and space", []string{"alice,bob", "carol"}, []string{"alice", "bob", "carol"}, "", []string{}, false},
+		{"empty comma parts dropped", []string{"alice,,bob"}, []string{"alice", "bob"}, "", []string{}, false},
+		{"trailing comma dropped", []string{"alice,"}, []string{"alice"}, "", []string{}, false},
+		{"single attach long flag", []string{"alice", "--attach", "f.pdf"}, []string{"alice"}, "", []string{"f.pdf"}, false},
+		{"single attach short flag", []string{"alice", "-a", "f.pdf"}, []string{"alice"}, "", []string{"f.pdf"}, false},
+		{"multiple attach flags", []string{"alice", "--attach", "a.pdf", "--attach", "b.png"}, []string{"alice"}, "", []string{"a.pdf", "b.png"}, false},
+		{"attach with subject and recipients", []string{"alice", "-s", "Hi", "bob", "--attach", "f.pdf"}, []string{"alice", "bob"}, "Hi", []string{"f.pdf"}, false},
+		{"trailing --attach errors", []string{"alice", "--attach"}, nil, "", nil, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContacts, gotSubject, err := parseEmailArgs(tc.in)
+			gotContacts, gotSubject, gotAttach, err := parseEmailArgs(tc.in)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("want error, got nil (contacts=%v subject=%q)", gotContacts, gotSubject)
@@ -46,6 +52,9 @@ func TestParseEmailArgs(t *testing.T) {
 			}
 			if gotSubject != tc.wantSubject {
 				t.Errorf("subject: got %q, want %q", gotSubject, tc.wantSubject)
+			}
+			if !reflect.DeepEqual(gotAttach, tc.wantAttach) {
+				t.Errorf("attach: got %v, want %v", gotAttach, tc.wantAttach)
 			}
 		})
 	}

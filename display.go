@@ -248,6 +248,7 @@ func renderFullHelp() {
 		{"<N>f", "view N full", "Open the Nth item with quoted history expanded"},
 		{"<N>r", "reply N", "Reply-all to the Nth item (ed-style editor)"},
 		{"<N>d", "done N", "Mark the Nth item as read"},
+		{"", "attach N", "List attachments on the Nth item (save/open <#>)"},
 		{"e <c>", "email <c>", "Compose a new email (one or more contacts)"},
 		{"c <c>", "chat <c>", "Send a 1:1 or group Teams chat (--topic for group)"},
 		{"r", "refresh", "Reload the dashboard"},

@@ -34,6 +34,7 @@ func (identityPainter) Paint(line []rune, _ int) []rune { return line }
 // numbers from the dashboard.
 var replVerbs = []string{
 	"view", "reply", "done",
+	"attach",
 	"email", "e",
 	"chat", "c",
 	"refresh", "r",

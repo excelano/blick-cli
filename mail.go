@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -169,7 +170,7 @@ func (g *GraphClient) ReplyAllToEmail(id, comment string) error {
 // (saveToSentItems defaults to true so the message lands in Sent like any
 // other Outlook send). Content type is Text — the keyboard-first compose
 // flow doesn't deal in HTML.
-func (g *GraphClient) SendMail(to []string, subject, body string) error {
+func (g *GraphClient) SendMail(to []string, subject, body string, attachments []OutgoingAttachment) error {
 	if len(to) == 0 {
 		return fmt.Errorf("no recipients")
 	}
@@ -179,12 +180,25 @@ func (g *GraphClient) SendMail(to []string, subject, body string) error {
 			"emailAddress": map[string]string{"address": addr},
 		}
 	}
+	message := map[string]interface{}{
+		"subject":      subject,
+		"body":         map[string]string{"contentType": "Text", "content": body},
+		"toRecipients": recipients,
+	}
+	if len(attachments) > 0 {
+		encoded := make([]map[string]interface{}, len(attachments))
+		for i, a := range attachments {
+			encoded[i] = map[string]interface{}{
+				"@odata.type":  fileAttachmentType,
+				"name":         a.Name,
+				"contentType":  a.ContentType,
+				"contentBytes": base64.StdEncoding.EncodeToString(a.Content),
+			}
+		}
+		message["attachments"] = encoded
+	}
 	payload := map[string]interface{}{
-		"message": map[string]interface{}{
-			"subject":      subject,
-			"body":         map[string]string{"contentType": "Text", "content": body},
-			"toRecipients": recipients,
-		},
+		"message":         message,
 		"saveToSentItems": true,
 	}
 	_, err := g.post("/me/sendMail", payload)
