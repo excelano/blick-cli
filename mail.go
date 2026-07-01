@@ -352,10 +352,22 @@ func rewriteAnchors(s string) string {
 			display = display[len("mailto:"):]
 		}
 		if text == "" || text == display || text == href {
-			return display
+			return shieldAngles(display)
 		}
-		return text + " (" + display + ")"
+		return text + " (" + shieldAngles(display) + ")"
 	})
+}
+
+// shieldAngles escapes < and > in a URL so the tag-strip pass in stripHTML
+// (which deletes anything matching <...>) can't truncate a URL that contains
+// literal angle brackets — e.g. a SafeLink whose decoded destination held
+// %3C...%3E. The later entity-decode pass turns &lt;/&gt; back into </>, so the
+// URL is restored intact. & is left alone so existing &amp; entities in the URL
+// still decode normally.
+func shieldAngles(url string) string {
+	url = strings.ReplaceAll(url, "<", "&lt;")
+	url = strings.ReplaceAll(url, ">", "&gt;")
+	return url
 }
 
 func stripHTML(s string) string {

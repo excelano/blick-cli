@@ -116,6 +116,11 @@ func TestStripHTMLPreservesLinks(t *testing.T) {
 			in:   `<a href="https://a.com">A</a> and <a href="https://b.com">B</a>`,
 			want: "A (https://a.com) and B (https://b.com)",
 		},
+		{
+			name: "angle brackets in url survive the tag strip",
+			in:   `<a href="https://example.com/x?a=<b>c">link</a>`,
+			want: "link (https://example.com/x?a=<b>c)",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

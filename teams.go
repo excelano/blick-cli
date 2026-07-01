@@ -4,9 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
+
+// chatPageSize caps how many chats /me/chats returns in one page. With the
+// recency $orderby it's the N most-recently-active chats; the inbox view notes
+// when the window may have been truncated by this cap.
+const chatPageSize = 50
 
 type ChatMessage struct {
 	ChatID  string
@@ -43,9 +49,10 @@ func (g *GraphClient) ChatsSince(since time.Time) ([]ChatMessage, error) {
 // viewpoint.isHidden so chats the user hid in Teams stay hidden either way.
 func (g *GraphClient) chatsFrom(cutoff time.Time, unreadOnly bool) ([]ChatMessage, error) {
 	query := url.Values{
-		"$select": {"id,topic,lastMessagePreview,viewpoint"},
-		"$expand": {"lastMessagePreview"},
-		"$top":    {"50"},
+		"$select":  {"id,topic,lastMessagePreview,viewpoint"},
+		"$expand":  {"lastMessagePreview"},
+		"$orderby": {"lastMessagePreview/createdDateTime desc"},
+		"$top":     {strconv.Itoa(chatPageSize)},
 	}
 
 	data, err := g.get("/me/chats", query)

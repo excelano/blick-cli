@@ -22,6 +22,7 @@ type GraphClient struct {
 	userID      string
 	userMail    string
 	tenantID    string
+	clientID    string
 }
 
 func NewGraphClient(cfg Config, tok *oauth2.Token) (*GraphClient, error) {
@@ -29,6 +30,10 @@ func NewGraphClient(cfg Config, tok *oauth2.Token) (*GraphClient, error) {
 	g := &GraphClient{
 		tokenSource: src,
 		httpClient:  &http.Client{},
+		// clientID is the app registration ID, reused as the presence
+		// setPresence sessionId (Graph requires the session id be the app's
+		// client id).
+		clientID: cfg.ClientID,
 	}
 
 	// Fetch user ID + primary mail address. userID filters unread chats;

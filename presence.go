@@ -78,8 +78,11 @@ func maybeHeartbeatPresence(client *GraphClient, cfg Config) {
 		return
 	}
 	if err := client.setPresenceSession(cfg.ClientID, "Available", "Available", "PT1H"); err != nil {
-		fmt.Printf("  %s(presence: could not switch to Available: %v)%s\n", dim, err, reset)
+		fmt.Printf("  %s(presence: could not nudge to Available: %v)%s\n", dim, err, reset)
 		return
 	}
-	fmt.Printf("  %s(presence: switched Away → Available for 1h)%s\n", dim, reset)
+	// "nudged", not "switched": a manually set preferred Away takes precedence
+	// over this session, so we can't confirm the effective status actually
+	// moved — only that the Available session was registered.
+	fmt.Printf("  %s(presence: nudged Away → Available for 1h)%s\n", dim, reset)
 }

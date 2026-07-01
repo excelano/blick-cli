@@ -52,13 +52,19 @@ func parseSearchArgs(args []string) (searchQuery, error) {
 }
 
 // kqlTerm formats one KQL term. A value with whitespace is phrase-quoted so it
-// stays a single term; an empty prop yields a bare free-text term.
+// stays a single term; an empty prop yields a bare free-text term. The whole
+// KQL string is later wrapped in double quotes for $search, so any backslash
+// or double quote in the value is escaped first — otherwise an inner quote
+// closes the $search string early and corrupts (or breaks) the query.
 func kqlTerm(prop, value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return ""
 	}
-	if strings.ContainsAny(value, " \t") {
+	phrase := strings.ContainsAny(value, " \t")
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `"`, `\"`)
+	if phrase {
 		value = `"` + value + `"`
 	}
 	if prop == "" {

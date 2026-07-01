@@ -102,7 +102,8 @@ func fetchInbox(client *GraphClient, enableTeams bool, daysBack int) []Item {
 	wg.Wait()
 
 	emailsTruncated := emailErr == nil && len(emails) >= inboxEmailTop
-	renderInbox(daysBack, emails, emailErr, chats, chatErr, enableTeams, emailsTruncated)
+	chatsTruncated := chatErr == nil && len(chats) >= chatPageSize
+	renderInbox(daysBack, emails, emailErr, chats, chatErr, enableTeams, emailsTruncated, chatsTruncated)
 
 	// Chats numbered ahead of emails, matching renderInbox's order and the
 	// dashboard's convention.

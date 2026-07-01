@@ -209,7 +209,7 @@ func renderDashboard(meeting *Meeting, emails []Email, emailErr error, chats []C
 // included — sharing the row format and chats-first numbering with the
 // dashboard so the same view/reply/done/attach verbs line up. emailsTruncated
 // adds a note when the window overflowed inboxEmailTop.
-func renderInbox(daysBack int, emails []Email, emailErr error, chats []ChatMessage, chatErr error, enableTeams, emailsTruncated bool) {
+func renderInbox(daysBack int, emails []Email, emailErr error, chats []ChatMessage, chatErr error, enableTeams, emailsTruncated, chatsTruncated bool) {
 	fmt.Println()
 
 	// The window always includes today, so it spans daysBack+1 calendar days.
@@ -232,6 +232,9 @@ func renderInbox(daysBack int, emails []Email, emailErr error, chats []ChatMessa
 	} else {
 		fmt.Printf("  💬 %schats (%d):%s\n", bold, len(chats), reset)
 		printChatRows(chats)
+		if chatsTruncated {
+			fmt.Printf("    %s(showing the %d most recently active — older in-window chats may be omitted)%s\n", dim, len(chats), reset)
+		}
 		fmt.Println()
 	}
 

@@ -192,7 +192,7 @@ All scopes are user-consentable by default per Microsoft's stock Graph policy. I
 | Mail.ReadWrite | Read and mark-read emails |
 | Mail.Send | Send new emails and reply-all to existing ones |
 | Calendars.Read | Show next meeting and today's calendar |
-| Presence.ReadWrite | Nudge presence Away → Available on run |
+| Presence.ReadWrite | Set your presence (`blick presence`) and nudge Away → Available on run |
 | People.Read | Seed the address book from frequently-contacted people |
 | Chat.ReadWrite | Read/reply Teams chats |
 | Chat.Create | Start new 1:1 chats with address-book contacts |
@@ -211,5 +211,6 @@ over Teams' idle-driven Away, but a user-set Do Not Disturb still wins over
 our Available. We never touch Busy, In a meeting, or Out of office — those
 are real signals and stay as-is.
 
-Opt out with `"presence_heartbeat": false` in config. With the heartbeat
-off, the `Presence.ReadWrite` scope is also not requested.
+Opt out of the heartbeat with `"presence_heartbeat": false` in config. The
+`Presence.ReadWrite` scope is still requested regardless — it also backs the
+`blick presence` command, which sets your status manually.
