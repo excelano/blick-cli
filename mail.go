@@ -195,6 +195,9 @@ var (
 	htmlTagRe    = regexp.MustCompile(`<[^>]*>`)
 	htmlEntityRe = regexp.MustCompile(`&[a-zA-Z0-9#]+;`)
 	whitespaceRe = regexp.MustCompile(`\n{3,}`)
+	// Matches an <a href="..."> ... </a> pair (case-insensitive, dot spans
+	// newlines) capturing the destination and the visible inner content.
+	anchorRe = regexp.MustCompile(`(?is)<a\b[^>]*?\bhref\s*=\s*["']([^"']*)["'][^>]*>(.*?)</a>`)
 )
 
 var entityMap = map[string]string{
@@ -207,7 +210,34 @@ var entityMap = map[string]string{
 	"&apos;": "'",
 }
 
+// rewriteAnchors turns <a href="URL">text</a> into visible text that keeps the
+// destination, so the general tag strip in stripHTML doesn't discard the URL.
+// Terminals that auto-linkify make the surviving URL clickable again. Named
+// anchors and javascript:/# hrefs carry no destination worth keeping, so only
+// their visible text survives.
+func rewriteAnchors(s string) string {
+	return anchorRe.ReplaceAllStringFunc(s, func(m string) string {
+		sub := anchorRe.FindStringSubmatch(m)
+		href := strings.TrimSpace(sub[1])
+		text := strings.TrimSpace(htmlTagRe.ReplaceAllString(sub[2], ""))
+		if href == "" || strings.HasPrefix(href, "#") ||
+			strings.HasPrefix(strings.ToLower(href), "javascript:") {
+			return text
+		}
+		display := href
+		if strings.HasPrefix(strings.ToLower(display), "mailto:") {
+			display = display[len("mailto:"):]
+		}
+		if text == "" || text == display || text == href {
+			return display
+		}
+		return text + " (" + display + ")"
+	})
+}
+
 func stripHTML(s string) string {
+	// Preserve link destinations before the tag strip removes the anchors.
+	s = rewriteAnchors(s)
 	// Replace block elements with newlines
 	for _, tag := range []string{"</p>", "</div>", "</tr>", "<br>", "<br/>", "<br />"} {
 		s = strings.ReplaceAll(s, tag, "\n")
