@@ -62,6 +62,10 @@ Today an error during refresh prints inline and may scroll past. A persistent on
 
 ## Reading & display
 
+### `inbox` / `i` — today's messages, read and unread
+
+New verb `inbox` (short `i`) shows today's chats and emails together — not just the unread queue the dashboard renders, but everything from local midnight to now, read included. Chats above emails, same numbering and item-verb wiring as the dashboard so `view N` / `reply N` / `attach N` work against the result. An optional count widens the window: `inbox 3` covers the last three days (still local-midnight anchored, i.e. today plus the two prior days). Bare `inbox` is the one-day form. Graph: emails via `/me/messages?$filter=receivedDateTime ge <iso>` on the window start; chats via the per-chat message pull already used for previews, filtered to the window. This is a deliberate step toward light history over the strict action-now scope, so keep it a distinct view — don't fold it into the unread dashboard.
+
 ### Unwrap Outlook SafeLinks
 
 Tenants with ATP rewrite every link in incoming mail through `https://<tenant>.safelinks.protection.outlook.com/?url=<percent-encoded-original>&data=...`. After the v0.9.x link-preservation fix these now survive rendering, but as the full wrapped form — clickable yet unreadable, and they leak the tenant + a tracking token. Unwrap in `rewriteAnchors` (mail.go): when the href host matches `*.safelinks.protection.outlook.com` and a `url` query param is present, parse it, percent-decode, and substitute the original back. Guard tightly — only that host, only when `url` is set; leave every other URL untouched. Covers the reference-attachment display path too if that ever renders hrefs.
