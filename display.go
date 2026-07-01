@@ -304,6 +304,7 @@ func renderFullHelp() {
 		{"<N>f", "view N full", "Open the Nth item with quoted history expanded"},
 		{"<N>r", "reply N", "Reply-all to the Nth item (ed-style editor)"},
 		{"<N>d", "done N", "Mark the Nth item as read"},
+		{"", "forward N", "Forward the Nth email to new recipients"},
 		{"", "attach N", "List attachments on the Nth item (save/open <#>)"},
 		{"i", "inbox [N]", "Today's chats & emails, read included (N days back)"},
 		{"e <c>", "email <c>", "Compose a new email (one or more contacts)"},

@@ -188,6 +188,10 @@ func main() {
 			replAttach(client, items, fields[1:])
 			continue
 		}
+		if len(fields) > 0 && fields[0] == "forward" {
+			replForward(client, items, fields[1:])
+			continue
+		}
 		if len(fields) > 0 && (fields[0] == "inbox" || fields[0] == "i") {
 			items = replInbox(client, cfg.EnableTeams, fields[1:], items)
 			continue

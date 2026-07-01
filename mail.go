@@ -197,6 +197,31 @@ func (g *GraphClient) ReplyAllToEmail(id, comment string) error {
 	return err
 }
 
+// ForwardEmail forwards the message to the given addresses with an optional
+// comment. Graph builds the "Fwd:" subject and quotes the original body
+// server-side via /forward, so we send only the recipients and the comment —
+// newlines mapped to <br> to match the HTML the original body renders as,
+// same as ReplyAllToEmail. An empty comment forwards with no added note.
+func (g *GraphClient) ForwardEmail(id, comment string, to []string) error {
+	if len(to) == 0 {
+		return fmt.Errorf("no recipients")
+	}
+	recipients := make([]map[string]interface{}, len(to))
+	for i, addr := range to {
+		recipients[i] = map[string]interface{}{
+			"emailAddress": map[string]string{"address": addr},
+		}
+	}
+	body := map[string]interface{}{
+		"toRecipients": recipients,
+	}
+	if comment != "" {
+		body["comment"] = strings.ReplaceAll(comment, "\n", "<br>")
+	}
+	_, err := g.post(fmt.Sprintf("/me/messages/%s/forward", id), body)
+	return err
+}
+
 // SendMail composes and sends a new message in one shot via /me/sendMail
 // (saveToSentItems defaults to true so the message lands in Sent like any
 // other Outlook send). Content type is Text — the keyboard-first compose

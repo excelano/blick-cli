@@ -10,21 +10,7 @@ _(empty — pick the next item from the sections below.)_
 
 ---
 
-## Attachments
-
-Attachment handling as a category is too large to scope all at once. Captured here as smaller, independent slices. List/save/open (receive) and `--attach` (send) shipped in v0.9.x; what remains:
-
-### Strip attachments when forwarding
-
-When `forward N` (in the Compose & messaging section) lands, default to not including attachments from the original — Graph's `/forward` endpoint does include them, but bandwidth + accidental forwarding of confidential files makes the opt-in version safer. `--with-attachments` flag re-enables the default Graph behavior.
-
----
-
 ## Compose & messaging extensions
-
-### Forward an email
-
-`forward N` against the unread list — opens a compose flow pre-loaded with the original subject (`Fwd: ...`) and quoted body, prompts for recipients. Graph endpoint `/me/messages/{id}/forward`.
 
 ### CC / BCC on email compose
 

@@ -71,15 +71,47 @@ func parseEmailArgs(args []string) ([]string, string, []string, error) {
 			attachments = append(attachments, args[i+1])
 			i++
 		default:
-			for _, part := range strings.Split(args[i], ",") {
-				part = strings.TrimSpace(part)
-				if part != "" {
-					positional = append(positional, part)
-				}
-			}
+			positional = append(positional, splitRecipients(args[i:i+1])...)
 		}
 	}
 	return positional, subject, attachments, nil
+}
+
+// splitRecipients expands raw tokens into contact handles, splitting each on
+// commas and dropping blanks — so "alice bob", "alice,bob", and "alice, bob"
+// all yield the same handles. Shared by email compose and forward.
+func splitRecipients(tokens []string) []string {
+	out := []string{}
+	for _, t := range tokens {
+		for _, part := range strings.Split(t, ",") {
+			if p := strings.TrimSpace(part); p != "" {
+				out = append(out, p)
+			}
+		}
+	}
+	return out
+}
+
+// resolveRecipients maps contact handles to addresses through the address
+// book, returning parallel slices of SMTP addresses and display strings
+// ("Name <addr>", or just the address when no distinct name). Fails on the
+// first unknown handle so callers abort before prompting for a body.
+func resolveRecipients(store *ContactStore, handles []string) (addrs, display []string, err error) {
+	addrs = make([]string, 0, len(handles))
+	display = make([]string, 0, len(handles))
+	for _, h := range handles {
+		c, err := store.Resolve(h)
+		if err != nil {
+			return nil, nil, err
+		}
+		addrs = append(addrs, c.Email)
+		if c.Name != "" && c.Name != c.Email {
+			display = append(display, fmt.Sprintf("%s <%s>", c.Name, c.Email))
+		} else {
+			display = append(display, c.Email)
+		}
+	}
+	return addrs, display, nil
 }
 
 // composeReader abstracts the subject + body input for shell vs. REPL
@@ -102,19 +134,9 @@ func composeAndSend(client *GraphClient, recipients []string, subject string, at
 		return err
 	}
 
-	addrs := make([]string, 0, len(recipients))
-	display := make([]string, 0, len(recipients))
-	for _, r := range recipients {
-		c, err := store.Resolve(r)
-		if err != nil {
-			return err
-		}
-		addrs = append(addrs, c.Email)
-		if c.Name != "" && c.Name != c.Email {
-			display = append(display, fmt.Sprintf("%s <%s>", c.Name, c.Email))
-		} else {
-			display = append(display, c.Email)
-		}
+	addrs, display, err := resolveRecipients(store, recipients)
+	if err != nil {
+		return err
 	}
 
 	// Read attachments up front so a bad path or oversized file fails

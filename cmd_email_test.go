@@ -60,6 +60,30 @@ func TestParseEmailArgs(t *testing.T) {
 	}
 }
 
+func TestSplitRecipients(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{"space separated", []string{"alice", "bob"}, []string{"alice", "bob"}},
+		{"comma in one token", []string{"alice,bob"}, []string{"alice", "bob"}},
+		{"comma with spaces", []string{"alice,", "bob"}, []string{"alice", "bob"}},
+		{"empty parts dropped", []string{"alice,,bob"}, []string{"alice", "bob"}},
+		{"trailing comma dropped", []string{"alice,"}, []string{"alice"}},
+		{"blanks trimmed", []string{" alice ", "  ", "bob"}, []string{"alice", "bob"}},
+		{"empty input", []string{}, []string{}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := splitRecipients(tc.in)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("splitRecipients(%v) = %v, want %v", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestSaveDraftCopy(t *testing.T) {
 	withTempHome(t)
 	path, err := saveDraftCopy([]string{"a@example.com", "b@example.com"}, "Subj", "Body text")
