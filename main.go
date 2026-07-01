@@ -104,8 +104,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	maybeHeartbeatPresence(client, cfg)
-
 	if len(os.Args) > 1 && os.Args[1] == "today" {
 		showToday(client)
 		return

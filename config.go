@@ -8,10 +8,9 @@ import (
 )
 
 type Config struct {
-	ClientID          string `json:"client_id"`
-	TenantID          string `json:"tenant_id"`
-	EnableTeams       bool   `json:"enable_teams"`
-	PresenceHeartbeat bool   `json:"presence_heartbeat"`
+	ClientID    string `json:"client_id"`
+	TenantID    string `json:"tenant_id"`
+	EnableTeams bool   `json:"enable_teams"`
 }
 
 // configDir returns the directory where blick keeps its config and token
@@ -44,9 +43,7 @@ func loadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("reading config: %w", err)
 	}
 
-	// Defaults applied before unmarshal so missing keys keep these values
-	// and explicit `false` in the config still wins.
-	cfg := Config{PresenceHeartbeat: true}
+	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return Config{}, fmt.Errorf("parsing config: %w", err)
 	}

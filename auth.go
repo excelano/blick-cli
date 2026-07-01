@@ -14,9 +14,7 @@ import (
 )
 
 func getScopes(cfg Config) []string {
-	// Presence.ReadWrite covers both the manual `presence` command and the
-	// optional heartbeat, so it's always requested — independent of the
-	// heartbeat toggle, which only controls the auto-nudge behavior.
+	// Presence.ReadWrite backs the `presence` command (set + read status).
 	s := []string{
 		"User.Read",
 		"Mail.ReadWrite",

@@ -102,8 +102,7 @@ cat > ~/.config/blick/config.json << 'EOF'
 {
     "client_id": "YOUR_CLIENT_ID_HERE",
     "tenant_id": "YOUR_TENANT_ID_HERE",
-    "enable_teams": true,
-    "presence_heartbeat": true
+    "enable_teams": true
 }
 EOF
 ```
@@ -116,7 +115,7 @@ By default, none of these Graph permissions require admin consent — they are a
 az ad app permission admin-consent --id YOUR_CLIENT_ID
 ```
 
-If a specific scope is blocked, the corresponding feature degrades: set `"enable_teams": false` to skip Teams chat, `"presence_heartbeat": false` to skip the presence nudge. The address book seed (`blick contacts seed`) needs `People.Read`; if that's blocked, hand-edit `~/.config/blick/contacts.json` instead.
+If a specific scope is blocked, the corresponding feature degrades: set `"enable_teams": false` to skip Teams chat. If `Presence.ReadWrite` is blocked, `blick presence` won't work but everything else does. The address book seed (`blick contacts seed`) needs `People.Read`; if that's blocked, hand-edit `~/.config/blick/contacts.json` instead.
 
 ## Usage
 
@@ -192,25 +191,30 @@ All scopes are user-consentable by default per Microsoft's stock Graph policy. I
 | Mail.ReadWrite | Read and mark-read emails |
 | Mail.Send | Send new emails and reply-all to existing ones |
 | Calendars.Read | Show next meeting and today's calendar |
-| Presence.ReadWrite | Set your presence (`blick presence`) and nudge Away → Available on run |
+| Presence.ReadWrite | Set and read your Teams presence (`blick presence`) |
 | People.Read | Seed the address book from frequently-contacted people |
 | Chat.ReadWrite | Read/reply Teams chats |
 | Chat.Create | Start new 1:1 chats with address-book contacts |
 
-## Presence heartbeat
+## Presence
 
-When you run `blick`, the tool reads your current Microsoft 365 presence. If
-you're showing as Away — typically because Teams' idle timer fired — blick
-registers itself as an active session with availability `Available` for one
-hour. Subsequent runs reset the hour.
+Set your Teams status from the shell:
 
-The mechanic is Graph's `presence: setPresence` endpoint, which is a
-*session* (not an override). Microsoft aggregates across sessions with the
-precedence DoNotDisturb > Busy > Available > Away, so our Available wins
-over Teams' idle-driven Away, but a user-set Do Not Disturb still wins over
-our Available. We never touch Busy, In a meeting, or Out of office — those
-are real signals and stay as-is.
+```bash
+blick presence busy       # available | busy | dnd | brb | away | offline
+blick presence            # no argument reports your current status
+```
 
-Opt out of the heartbeat with `"presence_heartbeat": false` in config. The
-`Presence.ReadWrite` scope is still requested regardless — it also backs the
-`blick presence` command, which sets your status manually.
+`p`/`presence` work the same way inside the dashboard REPL.
+
+The mechanic is Graph's `setUserPreferredPresence` (the same override the
+Teams status picker writes), paired with a `setPresence` session so the
+status shows even with no Teams client running. A manually set status takes
+precedence over Teams' own session-level state.
+
+One caveat worth knowing: Microsoft presence is activity-driven. `busy`,
+`dnd`, `brb`, and `offline` hold as a solid status, but `available` will
+drift to "AvailableIdle" and eventually Away without an active client sending
+activity — a fire-and-forget CLI can't keep a clean green "Available" alive
+on its own. A manually set status also lapses after a few hours as its
+session expires; re-run the command (or drive it from cron) to refresh.
