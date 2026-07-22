@@ -39,6 +39,16 @@ Then install it, so `brew upgrade` keeps it current:
 brew install blick
 ```
 
+### Windows
+
+With [WinGet](https://learn.microsoft.com/windows/package-manager/), so `winget upgrade` keeps it current:
+
+```powershell
+winget install Excelano.blick
+```
+
+Or download the `windows_amd64` zip from the [releases page](https://github.com/excelano/blick-cli/releases) and unzip it.
+
 ### Prebuilt binary (Linux and macOS)
 
 ```sh
