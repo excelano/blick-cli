@@ -6,7 +6,26 @@ Friction observed in real use. Items here have bitten in practice — speculativ
 
 ## Next up
 
-_(empty — pick the next item from the sections below.)_
+> **Status (2026-07-27):** shipped on apt, brew, and winget; run `fleet blick-cli`
+> for the current version. No open issues or PRs.
+
+**When you return, start here** (recommended order):
+
+1. **`unmark N`** — mark an email back to unread (iOS parity, below). This file
+   already calls it the one that hits most often: mark-read by accident today and
+   the only undo is reopening the message in Outlook. Inverse of a verb that
+   already exists, so it is small.
+2. **`drafts list` / `resume` / `delete`** (compose section, below). `saveDraftCopy`
+   already writes drafts to `~/.config/blick/drafts/` on send failure, and there
+   is currently no way to get one back. Half-built state you cannot reach is worse
+   than no state — this closes a loop rather than opening one.
+3. **`delete N` / `move N <folder>`** (inbox triage, below). There is no way to
+   archive anything from the CLI today. Both are Graph one-shot calls.
+
+One prerequisite worth knowing before picking from further down: **`ooo on|off`**
+needs the `MailboxSettings.ReadWrite` scope — the first new scope since v0.7.0 —
+so it wants a config opt-in like `enable_teams`, and existing users re-consent.
+Everything else in the iOS-parity list runs on scopes already granted.
 
 ---
 
