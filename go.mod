@@ -1,4 +1,4 @@
-module blick
+module github.com/excelano/blick-cli
 
 go 1.25.0
 
