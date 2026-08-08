@@ -11,9 +11,9 @@ import (
 )
 
 type Item struct {
-	Kind    string // "email" or "chat"
-	Email   *Email
-	Chat    *ChatMessage
+	Kind  string // "email" or "chat"
+	Email *Email
+	Chat  *ChatMessage
 }
 
 var debug bool
@@ -31,7 +31,7 @@ func main() {
 		os.Args = append(os.Args[:1], os.Args[2:]...)
 	}
 	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-V") {
-		fmt.Printf("blick %s (%s, %s)\n", version, commit, date)
+		fmt.Println(versionLine())
 		os.Exit(0)
 	}
 	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
@@ -278,14 +278,15 @@ func main() {
 //
 // Short forms map to their long-form equivalents so the dispatcher only
 // has to handle one name per action:
-//   r5, r 5, reply 5  -> ("reply", 5)
-//   d3, d 3, done 3   -> ("done",  3)
-//   7, view 7         -> ("view",  7)
-//   r, refresh        -> ("refresh", -1)
-//   x, exit           -> ("exit",   -1)
-//   q, quit           -> ("quit",   -1)
-//   h, help           -> ("help",   -1)
-//   t, today          -> ("today",  -1)
+//
+//	r5, r 5, reply 5  -> ("reply", 5)
+//	d3, d 3, done 3   -> ("done",  3)
+//	7, view 7         -> ("view",  7)
+//	r, refresh        -> ("refresh", -1)
+//	x, exit           -> ("exit",   -1)
+//	q, quit           -> ("quit",   -1)
+//	h, help           -> ("help",   -1)
+//	t, today          -> ("today",  -1)
 func parseCommand(input string) (string, int) {
 	fields := strings.Fields(input)
 	if len(fields) == 0 {
