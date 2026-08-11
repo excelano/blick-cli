@@ -31,7 +31,7 @@ func (g *GraphClient) RelevantPeople() ([]PersonCandidate, error) {
 
 	var result struct {
 		Value []struct {
-			DisplayName           string `json:"displayName"`
+			DisplayName          string `json:"displayName"`
 			ScoredEmailAddresses []struct {
 				Address string `json:"address"`
 			} `json:"scoredEmailAddresses"`

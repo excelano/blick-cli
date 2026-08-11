@@ -82,8 +82,8 @@ func (g *GraphClient) chatsFrom(cutoff time.Time, unreadOnly bool) ([]ChatMessag
 				MessageType     string `json:"messageType"`
 			} `json:"lastMessagePreview"`
 			Viewpoint *struct {
-				IsHidden                 bool   `json:"isHidden"`
-				LastMessageReadDateTime  string `json:"lastMessageReadDateTime"`
+				IsHidden                bool   `json:"isHidden"`
+				LastMessageReadDateTime string `json:"lastMessageReadDateTime"`
 			} `json:"viewpoint"`
 		} `json:"value"`
 	}
