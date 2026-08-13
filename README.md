@@ -62,7 +62,7 @@ This downloads the latest release binary for your platform, verifies the SHA-256
 ```bash
 git clone https://github.com/excelano/blick-cli
 cd blick-cli
-go build -o blick .
+go build ./cmd/blick
 mv blick ~/bin/
 ```
 

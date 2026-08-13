@@ -11,7 +11,7 @@ before:
 
 builds:
   - id: blick
-    main: .
+    main: ./cmd/blick
     binary: blick
     env:
       - CGO_ENABLED=0

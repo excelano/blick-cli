@@ -22,10 +22,7 @@ go.work.sum
 .env
 
 # Built binary at repo root
-# (bare `go build` emits blick-cli — the module path's last element — while
-# goreleaser and the installers emit blick)
 /blick
-/blick-cli
 /checkin
 
 # Local config / cached tokens (just in case)
