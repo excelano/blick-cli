@@ -112,6 +112,26 @@ func TestStripHTMLPreservesLinks(t *testing.T) {
 			want: "Section",
 		},
 		{
+			name: "data href drops to text",
+			in:   `<a href="data:text/html;base64,PHNjcmlwdD4=">Invoice</a>`,
+			want: "Invoice",
+		},
+		{
+			name: "vbscript href drops to text",
+			in:   `<a href="vbscript:msgbox(1)">Open</a>`,
+			want: "Open",
+		},
+		{
+			name: "scheme match ignores case",
+			in:   `<a href="DaTa:text/html,<h1>hi</h1>">Report</a>`,
+			want: "Report",
+		},
+		{
+			name: "data href inside a safe link drops to text",
+			in:   `<a href="https://na01.safelinks.protection.outlook.com/?url=data%3Atext%2Fhtml%2C%3Ch1%3Ehi%3C%2Fh1%3E&amp;data=x">Statement</a>`,
+			want: "Statement",
+		},
+		{
 			name: "two links in one line",
 			in:   `<a href="https://a.com">A</a> and <a href="https://b.com">B</a>`,
 			want: "A (https://a.com) and B (https://b.com)",

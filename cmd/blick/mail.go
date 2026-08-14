@@ -333,18 +333,39 @@ func unwrapSafeLink(href string) string {
 	return href
 }
 
+// unsafeSchemes carry executable content rather than a destination. The reason
+// this matters in a terminal is the same reason keeping the URL is useful at
+// all: terminals that auto-linkify will make whatever survives clickable, and
+// a click on data:text/html or javascript: runs the sender's markup in the
+// reader's browser. Mail is attacker-supplied, so the list is checked rather
+// than assumed.
+var unsafeSchemes = []string{"javascript:", "data:", "vbscript:"}
+
+// hasUnsafeScheme reports whether href names a scheme from unsafeSchemes. The
+// caller checks this after unwrapping Safe Links, so a hostile scheme carried
+// inside an ATP wrapper is caught on the destination rather than on the
+// harmless outlook.com URL around it.
+func hasUnsafeScheme(href string) bool {
+	lower := strings.ToLower(href)
+	for _, scheme := range unsafeSchemes {
+		if strings.HasPrefix(lower, scheme) {
+			return true
+		}
+	}
+	return false
+}
+
 // rewriteAnchors turns <a href="URL">text</a> into visible text that keeps the
 // destination, so the general tag strip in stripHTML doesn't discard the URL.
 // Terminals that auto-linkify make the surviving URL clickable again. Named
-// anchors and javascript:/# hrefs carry no destination worth keeping, so only
-// their visible text survives.
+// anchors, # fragments, and the executable schemes carry no destination worth
+// keeping, so only their visible text survives.
 func rewriteAnchors(s string) string {
 	return anchorRe.ReplaceAllStringFunc(s, func(m string) string {
 		sub := anchorRe.FindStringSubmatch(m)
 		href := unwrapSafeLink(strings.TrimSpace(sub[1]))
 		text := strings.TrimSpace(htmlTagRe.ReplaceAllString(sub[2], ""))
-		if href == "" || strings.HasPrefix(href, "#") ||
-			strings.HasPrefix(strings.ToLower(href), "javascript:") {
+		if href == "" || strings.HasPrefix(href, "#") || hasUnsafeScheme(href) {
 			return text
 		}
 		display := href
