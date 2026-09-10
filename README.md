@@ -68,7 +68,7 @@ go build ./cmd/blick
 mv blick ~/bin/
 ```
 
-Requires Go 1.25+.
+Requires Go 1.26+.
 
 ## Setup
 
