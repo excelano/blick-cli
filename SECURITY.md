@@ -8,7 +8,7 @@ Please do not open public issues for security problems.
 
 ## Supported versions
 
-blick-cli is built from source on each install. Security fixes ship through `main`; pull and rebuild to apply them. There are no maintained release branches.
+The latest release receives security fixes. Older versions are not supported. Fixes ship in a new tagged release; update the way you installed. There are no maintained release branches.
 
 ## What blick-cli can access
 
