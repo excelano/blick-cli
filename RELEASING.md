@@ -9,8 +9,8 @@ This file carries what is true of blick and not of its siblings.
 |---|---|
 | Loop | goreleaser |
 | `apt-ship` argument | `blick-cli` |
-| winget package | `Excelano.blick` |
-| Windows asset | `blick_<version>_windows_amd64.zip` |
+| Packages per release | 2, amd64 arm64 |
+| winget package | `Excelano.blick` — `blick_<version>_windows_amd64.zip` |
 
 **The repository is `blick-cli` and the command is `blick`.** Everything
 downstream — the binary, the archive names, the Debian package, the Homebrew
