@@ -51,14 +51,6 @@ winget install Excelano.blick
 
 Or download the `windows_amd64` zip from the [releases page](https://github.com/excelano/blick-cli/releases) and unzip it.
 
-### Prebuilt binary (Linux and macOS)
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/install.sh | sh
-```
-
-This downloads the latest release binary for your platform, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` isn't writable). Override the destination with `BLICK_INSTALL_DIR=$HOME/bin sh`; pin to a specific tag with `BLICK_VERSION=v0.4.0 sh`. To uninstall: `curl -fsSL https://raw.githubusercontent.com/excelano/blick-cli/main/uninstall.sh | sh` (or `sudo apt remove blick` if installed via apt).
-
 ### Build from source
 
 ```bash
