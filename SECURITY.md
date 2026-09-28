@@ -18,7 +18,11 @@ All of these scopes are user-consentable by default per Microsoft's stock Graph 
 
 ## What blick-cli stores
 
-blick-cli stores its configuration at `~/.config/blick/config.json` (client ID, tenant ID, and the `enable_teams` flag) and a cached OAuth token at `~/.config/blick/token.json`. That is everything: no telemetry, no analytics, no remote logging. The refresh token never leaves your machine. blick-cli talks only to Microsoft's identity and Graph endpoints (`login.microsoftonline.com` and `graph.microsoft.com`).
+blick-cli stores its configuration at `~/.config/blick/config.json` (client ID, tenant ID, and the `enable_teams` flag); nothing in it is a secret. The cached OAuth token, at `~/.config/blick/token.json`, and the address book, at `~/.config/blick/contacts.json` (built from `People.Read` suggestions or entries you add by hand, and holding the names and addresses of people you correspond with), are both encrypted at rest through [atrest](https://github.com/excelano/atrest), under a key your operating system holds rather than one stored beside the file: DPAPI on Windows, your desktop's D-Bus Secret Service on Linux (or the kernel's per-user keyring where no such session is reachable), and your login Keychain on macOS. Where none of these is reachable, both files fall back to plaintext, protected only by their file mode, 0600 in a 0700 directory.
+
+A draft saved to `~/.config/blick/drafts/` after a failed send is plaintext by design: it holds the message you were composing, and you need to be able to open it in an ordinary editor to resend it. Nothing else is written there.
+
+That is everything: no telemetry, no analytics, no remote logging. blick-cli talks only to Microsoft's identity and Graph endpoints (`login.microsoftonline.com` and `graph.microsoft.com`).
 
 ## App registration
 

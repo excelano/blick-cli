@@ -183,7 +183,11 @@ The same view is available inside the REPL by typing `today`.
 ## Files
 
 - `~/.config/blick/config.json` — client ID, tenant ID, and feature flags
-- `~/.config/blick/token.json` — cached OAuth token (auto-created)
+- `~/.config/blick/token.json` — cached OAuth token (auto-created), encrypted at rest where the platform allows it
+- `~/.config/blick/contacts.json` — address book, encrypted the same way
+- `~/.config/blick/drafts/` — a message saved here if a send fails, plaintext so you can reopen and resend it
+
+See [SECURITY.md](SECURITY.md) for how the encryption works on each platform and what happens where it is not available.
 
 ## Permissions
 

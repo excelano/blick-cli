@@ -1,7 +1,11 @@
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
+
 package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +13,8 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/excelano/atrest"
 )
 
 // Contact is a single address-book entry. Key is the lookup handle (e.g.
@@ -35,22 +41,40 @@ func contactsPath() string {
 	return filepath.Join(configDir(), "contacts.json")
 }
 
-// LoadContacts reads contacts.json. A missing file returns an empty store —
-// the first add or seed creates it. A malformed file is a hard error so the
-// caller surfaces the path and the user can fix it by hand; we never
-// silently rewrite a file we couldn't parse.
+// contactsSealName binds contacts.json to atrest's protection, distinct from
+// the token's so the two files never open under each other's key.
+const contactsSealName = "excelano/blick-contacts"
+
+// LoadContacts reads contacts.json and opens it through atrest. A missing
+// file, or one this machine cannot open — sealed on another machine or by
+// another user — returns an empty store, the same as a fresh install; the
+// first add or seed creates it. A file that parses but is not a sealed
+// envelope is malformed only if it also fails as a ContactStore, so a
+// plaintext file from before sealing existed still reads normally. A
+// malformed file is a hard error so the caller surfaces the path and the
+// user can fix it by hand; we never silently rewrite a file we couldn't
+// parse.
 func LoadContacts() (*ContactStore, error) {
+	empty := &ContactStore{Version: contactsFileVersion, Contacts: map[string]*Contact{}}
 	path := contactsPath()
-	data, err := os.ReadFile(path)
+	stored, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &ContactStore{Version: contactsFileVersion, Contacts: map[string]*Contact{}}, nil
+			return empty, nil
 		}
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 
+	plain, sealed, err := atrest.Open(contactsSealName, stored)
+	if errors.Is(err, atrest.ErrCannotOpen) {
+		return empty, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("opening %s: %w", path, err)
+	}
+
 	var s ContactStore
-	if err := json.Unmarshal(data, &s); err != nil {
+	if err := json.Unmarshal(plain, &s); err != nil {
 		return nil, fmt.Errorf("cannot parse %s: %w", path, err)
 	}
 	if s.Contacts == nil {
@@ -59,12 +83,18 @@ func LoadContacts() (*ContactStore, error) {
 	for k, c := range s.Contacts {
 		c.Key = k
 	}
+	if !sealed && atrest.Available() {
+		// Best-effort: a failure to reseal here costs nothing but leaving
+		// the file plaintext a little longer, and the caller already has
+		// what it asked for.
+		_ = s.Save()
+	}
 	return &s, nil
 }
 
-// Save writes the store atomically (write-then-rename) at mode 0600 so a
-// crash mid-write can't truncate the file. The config dir is created with
-// mode 0700 the same way the token cache does it.
+// Save seals the store with atrest and writes it atomically (write-then-
+// rename) at mode 0600 so a crash mid-write can't truncate the file. The
+// config dir is created with mode 0700 the same way the token cache does it.
 func (s *ContactStore) Save() error {
 	if s.Version == 0 {
 		s.Version = contactsFileVersion
@@ -73,12 +103,16 @@ func (s *ContactStore) Save() error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(s, "", "  ")
+	plain, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
+	stored, err := atrest.Seal(contactsSealName, plain)
+	if err != nil {
+		return fmt.Errorf("sealing %s: %w", contactsPath(), err)
+	}
 	tmp := contactsPath() + ".tmp"
-	if err := os.WriteFile(tmp, data, 0600); err != nil {
+	if err := os.WriteFile(tmp, stored, 0600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, contactsPath())

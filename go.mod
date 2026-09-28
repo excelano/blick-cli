@@ -4,7 +4,11 @@ go 1.26.0
 
 require (
 	github.com/chzyer/readline v1.5.1
+	github.com/excelano/atrest v0.1.1
 	golang.org/x/oauth2 v0.37.0
 )
 
-require golang.org/x/sys v0.48.0 // indirect
+require (
+	github.com/godbus/dbus/v5 v5.2.2 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+)

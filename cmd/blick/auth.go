@@ -1,8 +1,12 @@
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
+
 package main
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/excelano/atrest"
 	"golang.org/x/oauth2"
 )
 
@@ -189,26 +194,63 @@ func pollToken(tokenURL, clientID, deviceCode string) (*oauth2.Token, error) {
 	}, nil
 }
 
+// tokenSealName binds the cached OAuth token to atrest's protection. It must
+// never change: doing so makes every existing token unreadable, costing every
+// user a fresh sign-in.
+const tokenSealName = "excelano/blick-token"
+
+// loadCachedToken reads the token cache and opens it through atrest. A cache
+// this machine cannot open — sealed on another machine or by another user —
+// is reported the same as a missing file, so the caller's existing "no
+// cached token, sign in" path handles it without a separate case: whatever
+// obtained the token no longer has a use for it here anyway. A plaintext
+// cache, whether from a build before sealing or one that fell back because
+// nothing was reachable, is opened as-is and resealed here so the next run
+// finds it sealed without a fresh sign-in.
 func loadCachedToken() (*oauth2.Token, error) {
-	data, err := os.ReadFile(tokenPath())
+	stored, err := os.ReadFile(tokenPath())
 	if err != nil {
 		return nil, err
 	}
+	plain, sealed, err := atrest.Open(tokenSealName, stored)
+	if errors.Is(err, atrest.ErrCannotOpen) {
+		return nil, os.ErrNotExist
+	}
+	if err != nil {
+		return nil, fmt.Errorf("opening cached token: %w", err)
+	}
 	var tok oauth2.Token
-	if err := json.Unmarshal(data, &tok); err != nil {
+	if err := json.Unmarshal(plain, &tok); err != nil {
 		return nil, err
+	}
+	if !sealed && atrest.Available() {
+		// Best-effort: a failure to reseal here costs nothing, since the
+		// token itself was read successfully, and the next save retries it.
+		_ = saveCachedToken(&tok)
 	}
 	return &tok, nil
 }
 
+// saveCachedToken seals the token with atrest before writing it, through a
+// temp file and rename so a crash mid-write leaves the previous cache intact
+// rather than a truncated one.
 func saveCachedToken(tok *oauth2.Token) error {
 	dir := configDir()
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(tok, "", "  ")
+	plain, err := json.MarshalIndent(tok, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(tokenPath(), data, 0600)
+	stored, err := atrest.Seal(tokenSealName, plain)
+	if err != nil {
+		return fmt.Errorf("sealing token cache: %w", err)
+	}
+	path := tokenPath()
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, stored, 0600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }

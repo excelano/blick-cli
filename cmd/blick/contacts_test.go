@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/excelano/atrest"
 )
 
 // withTempHome points HOME at a fresh tempdir for the duration of one test
@@ -61,6 +63,50 @@ func TestSaveAndLoadRoundTrip(t *testing.T) {
 	}
 	if c.Key != "tony" || c.Name != "Tony Stark" || c.Email != "tony@stark.com" {
 		t.Errorf("unexpected contact: %+v", c)
+	}
+}
+
+// This drives LoadContacts and Save through the real atrest package, the
+// same discipline as TestTokenCacheSealsForReal: what it proves depends on
+// what this machine actually offers, and either way the file it wrote is
+// what LoadContacts reads back.
+func TestContactsSealForReal(t *testing.T) {
+	withTempHome(t)
+	s := &ContactStore{Version: contactsFileVersion, Contacts: map[string]*Contact{}}
+	s.Contacts["tony"] = &Contact{Key: "tony", Name: "Tony Stark", Email: "tony@stark.com"}
+	if err := s.Save(); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	stored, err := os.ReadFile(contactsPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, sealed, err := atrest.Open(contactsSealName, stored)
+	if err != nil {
+		t.Fatalf("atrest.Open of what Save wrote: %v", err)
+	}
+	t.Logf("on this machine, Save sealed=%v (stored: %s)", sealed, stored)
+}
+
+// A contacts.json this machine cannot open reads back as an empty store, the
+// same as a fresh install, rather than as an error that would block every
+// command until the user deletes the file by hand.
+func TestLoadContactsUnopenableIsEmpty(t *testing.T) {
+	withTempHome(t)
+	if err := os.MkdirAll(configDir(), 0700); err != nil {
+		t.Fatal(err)
+	}
+	foreign := `{"atrest":1,"alg":"aes-gcm","data":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}`
+	if err := os.WriteFile(contactsPath(), []byte(foreign), 0600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := LoadContacts()
+	if err != nil {
+		t.Fatalf("LoadContacts: %v", err)
+	}
+	if len(s.Contacts) != 0 {
+		t.Errorf("expected an empty store for an unopenable file, got %d contacts", len(s.Contacts))
 	}
 }
 
