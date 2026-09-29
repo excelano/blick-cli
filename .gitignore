@@ -32,3 +32,4 @@ token.json
 next.txt
 
 ship.toml
+/dist/
