@@ -39,6 +39,9 @@ func TestTokenCacheSealsForReal(t *testing.T) {
 		t.Fatalf("atrest.Open of what saveCachedToken wrote: %v", err)
 	}
 	t.Logf("on this machine, saveCachedToken sealed=%v (stored: %s)", sealed, stored)
+	if sealed && !atrest.Persistent() {
+		t.Error("saveCachedToken sealed although atrest's key would not survive a reboot")
+	}
 	var gotPlain oauth2.Token
 	if err := json.Unmarshal(plain, &gotPlain); err != nil {
 		t.Fatalf("plaintext under the envelope does not parse: %v", err)

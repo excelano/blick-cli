@@ -83,7 +83,7 @@ func LoadContacts() (*ContactStore, error) {
 	for k, c := range s.Contacts {
 		c.Key = k
 	}
-	if !sealed && atrest.Available() {
+	if !sealed && atrest.Persistent() {
 		// Best-effort: a failure to reseal here costs nothing but leaving
 		// the file plaintext a little longer, and the caller already has
 		// what it asked for.
@@ -92,7 +92,7 @@ func LoadContacts() (*ContactStore, error) {
 	return &s, nil
 }
 
-// Save seals the store with atrest and writes it atomically (write-then-
+// Save seals the store with sealForDisk and writes it atomically (write-then-
 // rename) at mode 0600 so a crash mid-write can't truncate the file. The
 // config dir is created with mode 0700 the same way the token cache does it.
 func (s *ContactStore) Save() error {
@@ -107,7 +107,7 @@ func (s *ContactStore) Save() error {
 	if err != nil {
 		return err
 	}
-	stored, err := atrest.Seal(contactsSealName, plain)
+	stored, err := sealForDisk(contactsSealName, plain)
 	if err != nil {
 		return fmt.Errorf("sealing %s: %w", contactsPath(), err)
 	}

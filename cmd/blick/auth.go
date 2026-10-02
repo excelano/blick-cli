@@ -199,6 +199,17 @@ func pollToken(tokenURL, clientID, deviceCode string) (*oauth2.Token, error) {
 // user a fresh sign-in.
 const tokenSealName = "excelano/blick-token"
 
+// sealForDisk seals plain under name unless atrest's key would not survive a
+// reboot, as on a machine with no unlocked Secret Service. There the file is
+// stored as plaintext at the caller's mode, because a sealed one would cost an
+// interactive sign-in at every boot.
+func sealForDisk(name string, plain []byte) ([]byte, error) {
+	if !atrest.Persistent() {
+		return plain, nil
+	}
+	return atrest.Seal(name, plain)
+}
+
 // loadCachedToken reads the token cache and opens it through atrest. A cache
 // this machine cannot open — sealed on another machine or by another user —
 // is reported the same as a missing file, so the caller's existing "no
@@ -223,7 +234,7 @@ func loadCachedToken() (*oauth2.Token, error) {
 	if err := json.Unmarshal(plain, &tok); err != nil {
 		return nil, err
 	}
-	if !sealed && atrest.Available() {
+	if !sealed && atrest.Persistent() {
 		// Best-effort: a failure to reseal here costs nothing, since the
 		// token itself was read successfully, and the next save retries it.
 		_ = saveCachedToken(&tok)
@@ -231,7 +242,7 @@ func loadCachedToken() (*oauth2.Token, error) {
 	return &tok, nil
 }
 
-// saveCachedToken seals the token with atrest before writing it, through a
+// saveCachedToken seals the token with sealForDisk before writing it, through a
 // temp file and rename so a crash mid-write leaves the previous cache intact
 // rather than a truncated one.
 func saveCachedToken(tok *oauth2.Token) error {
@@ -243,7 +254,7 @@ func saveCachedToken(tok *oauth2.Token) error {
 	if err != nil {
 		return err
 	}
-	stored, err := atrest.Seal(tokenSealName, plain)
+	stored, err := sealForDisk(tokenSealName, plain)
 	if err != nil {
 		return fmt.Errorf("sealing token cache: %w", err)
 	}
