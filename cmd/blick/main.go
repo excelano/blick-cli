@@ -46,7 +46,7 @@ func main() {
 		fmt.Println("  search [--from|--subject|--text|words]  Search mail (KQL); prints matches")
 		fmt.Println("  join                           Open the current or next online meeting")
 		fmt.Println("  presence [state]               Set Teams presence (available/busy/dnd/brb/away/offline)")
-		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, seed)")
+		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, edit, seed)")
 		fmt.Println("  email <contact> [--subject]    Compose and send a message (--cc, --bcc, --attach)")
 		fmt.Println("  chat <contact> [--topic]       Send a Teams chat (group when >1 contact)")
 		fmt.Println("  logout                         Clear cached credentials")

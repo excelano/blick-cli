@@ -119,7 +119,7 @@ By default, none of these Graph permissions require admin consent — they are a
 az ad app permission admin-consent --id YOUR_CLIENT_ID
 ```
 
-If a specific scope is blocked, the corresponding feature degrades: set `"enable_teams": false` to skip Teams chat. If `Presence.ReadWrite` is blocked, `blick presence` won't work but everything else does. The address book seed (`blick contacts seed`) needs `People.Read`; if that's blocked, hand-edit `~/.config/blick/contacts.json` instead.
+If a specific scope is blocked, the corresponding feature degrades: set `"enable_teams": false` to skip Teams chat. If `Presence.ReadWrite` is blocked, `blick presence` won't work but everything else does. The address book seed (`blick contacts seed`) needs `People.Read`; if that's blocked, add entries with `blick contacts add`, or open the whole book in your editor with `blick contacts edit`.
 
 ## Usage
 
@@ -184,7 +184,7 @@ The same view is available inside the REPL by typing `today`.
 
 - `~/.config/blick/config.json` — client ID, tenant ID, and feature flags
 - `~/.config/blick/token.json` — cached OAuth token (auto-created), encrypted at rest where the platform keeps a key that survives a reboot, plaintext at mode 0600 otherwise
-- `~/.config/blick/contacts.json` — address book, encrypted the same way
+- `~/.config/blick/contacts.json` — address book, encrypted the same way; `blick contacts edit` opens it in `$VISUAL`, or `$EDITOR`, and seals what you save
 - `~/.config/blick/drafts/` — a message saved here if a send fails, plaintext so you can reopen and resend it
 
 See [SECURITY.md](SECURITY.md) for how the encryption works on each platform and what happens where it is not available.

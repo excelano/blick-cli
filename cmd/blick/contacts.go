@@ -45,43 +45,83 @@ func contactsPath() string {
 // the token's so the two files never open under each other's key.
 const contactsSealName = "excelano/blick-contacts"
 
-// LoadContacts reads contacts.json and opens it through atrest. A missing
-// file, or one this machine cannot open — sealed on another machine or by
-// another user — returns an empty store, the same as a fresh install; the
-// first add or seed creates it. A file that parses but is not a sealed
-// envelope is malformed only if it also fails as a ContactStore, so a
-// plaintext file from before sealing existed still reads normally. A
-// malformed file is a hard error so the caller surfaces the path and the
-// user can fix it by hand; we never silently rewrite a file we couldn't
-// parse.
-func LoadContacts() (*ContactStore, error) {
-	empty := &ContactStore{Version: contactsFileVersion, Contacts: map[string]*Contact{}}
+// readContacts returns the plaintext of contacts.json and whether it was
+// sealed. A missing file, or one this machine cannot open — sealed on another
+// machine or by another user — reads as no file, the same as a fresh install.
+// A file sealed under a keyring that stays locked is an error rather than no
+// file, so a later save cannot overwrite the address book it holds.
+func readContacts() (plain []byte, sealed bool, err error) {
 	path := contactsPath()
 	stored, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return empty, nil
+			return nil, false, nil
 		}
-		return nil, fmt.Errorf("reading %s: %w", path, err)
+		return nil, false, fmt.Errorf("reading %s: %w", path, err)
 	}
-
-	plain, sealed, err := atrest.Open(contactsSealName, stored)
-	if errors.Is(err, atrest.ErrCannotOpen) {
-		return empty, nil
+	plain, sealed, err = openFromDisk(contactsSealName, "address book", stored)
+	if errors.Is(err, atrest.ErrCannotOpen) && !errors.Is(err, atrest.ErrLocked) {
+		return nil, false, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("opening %s: %w", path, err)
+		return nil, false, fmt.Errorf("opening %s: %w", path, err)
 	}
+	return plain, sealed, nil
+}
 
+// parseContacts reads the on-disk shape. A plaintext file from before sealing
+// existed has the same shape, so it parses the same way.
+func parseContacts(plain []byte) (*ContactStore, error) {
 	var s ContactStore
 	if err := json.Unmarshal(plain, &s); err != nil {
-		return nil, fmt.Errorf("cannot parse %s: %w", path, err)
+		return nil, err
 	}
 	if s.Contacts == nil {
 		s.Contacts = map[string]*Contact{}
 	}
 	for k, c := range s.Contacts {
+		if c == nil {
+			return nil, fmt.Errorf("contact %q is empty", k)
+		}
 		c.Key = k
+	}
+	return &s, nil
+}
+
+// validateContacts refuses an address book a later command could not use: a
+// contact with no key, no name, or an address that is not one.
+func validateContacts(s *ContactStore) error {
+	for k, c := range s.Contacts {
+		switch {
+		case strings.TrimSpace(k) == "":
+			return fmt.Errorf("a contact has an empty key")
+		case strings.TrimSpace(c.Name) == "":
+			return fmt.Errorf("contact %q has no name", k)
+		case !emailLike.MatchString(c.Email):
+			return fmt.Errorf("contact %q: %q is not an email address", k, c.Email)
+		}
+	}
+	return nil
+}
+
+func emptyContacts() *ContactStore {
+	return &ContactStore{Version: contactsFileVersion, Contacts: map[string]*Contact{}}
+}
+
+// LoadContacts returns the address book, empty where there is no file to read.
+// A file that does not parse is a hard error naming the path, never silently
+// rewritten; blick contacts edit opens it for repair.
+func LoadContacts() (*ContactStore, error) {
+	plain, sealed, err := readContacts()
+	if err != nil {
+		return nil, err
+	}
+	if plain == nil {
+		return emptyContacts(), nil
+	}
+	s, err := parseContacts(plain)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse %s: %w (blick contacts edit opens it for repair)", contactsPath(), err)
 	}
 	if !sealed && atrest.Persistent() {
 		// Best-effort: a failure to reseal here costs nothing but leaving
@@ -89,7 +129,7 @@ func LoadContacts() (*ContactStore, error) {
 		// what it asked for.
 		_ = s.Save()
 	}
-	return &s, nil
+	return s, nil
 }
 
 // Save seals the store with sealForDisk and writes it atomically (write-then-

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -32,13 +33,19 @@ func needsGraphForContacts(args []string) bool {
 // runContacts dispatches `blick contacts ...`. Args is everything after
 // "contacts" on the command line. The dispatcher itself never touches
 // Graph — only `seed` does — so loading and listing work even when the
-// app registration hasn't been granted People.Read consent yet.
+// app registration hasn't been granted People.Read consent yet. `edit` does
+// its own reading, since a file the store cannot parse is one of the things
+// it is for.
 func runContacts(client *GraphClient, args []string) {
 	sub := "list"
 	rest := []string{}
 	if len(args) > 0 {
 		sub = args[0]
 		rest = args[1:]
+	}
+	if sub == "edit" {
+		contactsEdit()
+		return
 	}
 
 	store, err := LoadContacts()
@@ -60,7 +67,7 @@ func runContacts(client *GraphClient, args []string) {
 		contactsSeed(client, store)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown contacts subcommand: %s\n", sub)
-		fmt.Fprintln(os.Stderr, "Usage: blick contacts {list|add|remove|show|seed}")
+		fmt.Fprintln(os.Stderr, "Usage: blick contacts {list|add|remove|show|edit|seed}")
 		os.Exit(1)
 	}
 }
@@ -273,8 +280,9 @@ func contactsSeed(client *GraphClient, store *ContactStore) {
 }
 
 // editorFallback returns the first available editor in the OS-specific
-// fallback chain when $EDITOR is unset: nved → ved → nano → vim on
-// Unix/macOS, edit → notepad on Windows. Returns "" if none are on PATH.
+// fallback chain when neither $VISUAL nor $EDITOR is set: nved → ved → nano →
+// vim on Unix/macOS, edit → notepad on Windows. Returns "" if none are on
+// PATH.
 func editorFallback() string {
 	var chain []string
 	if runtime.GOOS == "windows" {
@@ -290,20 +298,41 @@ func editorFallback() string {
 	return ""
 }
 
-// editProposed writes the proposed list to a temp JSON file, opens it in
-// $EDITOR (or the OS-specific fallback chain when $EDITOR is unset), and
-// parses the result back. Lets the user prune rows or rename keys before
-// commit. The temp file is left on disk after a failed parse so the user
-// can recover their edits.
-func editProposed(props []proposedContact) ([]proposedContact, error) {
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = editorFallback()
-		if editor == "" {
-			return nil, fmt.Errorf("no editor available — set $EDITOR")
+// editorCommand returns the editor to run and any arguments it carries, as in
+// "code --wait": $VISUAL first, then $EDITOR, then the fallback chain.
+func editorCommand() ([]string, error) {
+	for _, v := range []string{"VISUAL", "EDITOR"} {
+		if cmd := strings.Fields(os.Getenv(v)); len(cmd) > 0 {
+			return cmd, nil
 		}
 	}
+	if e := editorFallback(); e != "" {
+		return []string{e}, nil
+	}
+	return nil, fmt.Errorf("no editor available — set $VISUAL or $EDITOR")
+}
 
+// runEditor opens path in the user's editor and waits for it to close.
+func runEditor(path string) error {
+	editor, err := editorCommand()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(editor[0], append(editor[1:], path)...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("editor %s: %w", filepath.Base(editor[0]), err)
+	}
+	return nil
+}
+
+// editProposed writes the proposed list to a temp JSON file, opens it in the
+// user's editor, and parses the result back. Lets the user prune rows or
+// rename keys before commit. The temp file is left on disk after a failed
+// parse so the user can recover their edits.
+func editProposed(props []proposedContact) ([]proposedContact, error) {
 	data, err := json.MarshalIndent(props, "", "  ")
 	if err != nil {
 		return nil, err
@@ -319,12 +348,8 @@ func editProposed(props []proposedContact) ([]proposedContact, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command(editor, path)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("editor %s: %w", filepath.Base(editor), err)
+	if err := runEditor(path); err != nil {
+		return nil, err
 	}
 
 	edited, err := os.ReadFile(path)
@@ -337,4 +362,76 @@ func editProposed(props []proposedContact) ([]proposedContact, error) {
 	}
 	_ = os.Remove(path)
 	return out, nil
+}
+
+// contactsEdit opens the address book in the user's editor and saves what
+// comes back, sealed the way Save always seals. The file on disk may be
+// sealed, so the editor works on a plaintext copy in the config directory, at
+// mode 0600, removed once the edit is saved or abandoned. A copy that does not
+// parse, or names a contact no later command could use, is offered back to
+// the editor rather than discarded, and is left on disk if the user declines.
+func contactsEdit() {
+	plain, _, err := readContacts()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if plain == nil {
+		plain, _ = json.MarshalIndent(emptyContacts(), "", "  ")
+	}
+	if err := os.MkdirAll(configDir(), 0700); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	tmp, err := os.CreateTemp(configDir(), "contacts-edit-*.json")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	path := tmp.Name()
+	if _, err := tmp.Write(plain); err != nil {
+		tmp.Close()
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	tmp.Close()
+
+	for {
+		if err := runEditor(path); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\nYour copy is at %s\n", err, path)
+			os.Exit(1)
+		}
+		edited, err := os.ReadFile(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if bytes.Equal(edited, plain) {
+			_ = os.Remove(path)
+			fmt.Println("No changes.")
+			return
+		}
+		store, err := parseContacts(edited)
+		if err == nil {
+			err = validateContacts(store)
+		}
+		if err == nil {
+			if err := store.Save(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error saving contacts: %v\nYour copy is at %s\n", err, path)
+				os.Exit(1)
+			}
+			_ = os.Remove(path)
+			fmt.Printf("  %sSaved %d contacts.%s\n", green, len(store.Contacts), reset)
+			return
+		}
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Printf("Edit again? [Y/n] ")
+		reply, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		switch strings.TrimSpace(strings.ToLower(reply)) {
+		case "", "y", "yes":
+		default:
+			fmt.Printf("Your copy is at %s\n", path)
+			os.Exit(1)
+		}
+	}
 }

@@ -199,31 +199,26 @@ func pollToken(tokenURL, clientID, deviceCode string) (*oauth2.Token, error) {
 // user a fresh sign-in.
 const tokenSealName = "excelano/blick-token"
 
-// sealForDisk seals plain under name unless atrest's key would not survive a
-// reboot, as on a machine with no unlocked Secret Service. There the file is
-// stored as plaintext at the caller's mode, because a sealed one would cost an
-// interactive sign-in at every boot.
-func sealForDisk(name string, plain []byte) ([]byte, error) {
-	if !atrest.Persistent() {
-		return plain, nil
-	}
-	return atrest.Seal(name, plain)
-}
-
-// loadCachedToken reads the token cache and opens it through atrest. A cache
-// this machine cannot open — sealed on another machine or by another user —
-// is reported the same as a missing file, so the caller's existing "no
-// cached token, sign in" path handles it without a separate case: whatever
-// obtained the token no longer has a use for it here anyway. A plaintext
-// cache, whether from a build before sealing or one that fell back because
-// nothing was reachable, is opened as-is and resealed here so the next run
-// finds it sealed without a fresh sign-in.
+// loadCachedToken reads the token cache and opens it through openFromDisk. A
+// cache this machine cannot open — sealed on another machine or by another
+// user, or under a keyring that stayed locked — is reported the same as a
+// missing file, so the caller's existing "no cached token, sign in" path
+// handles it without a separate case: whatever obtained the token no longer
+// has a use for it here anyway. The locked case says so first, since the
+// user has just seen a prompt and is about to be asked to sign in instead. A
+// plaintext cache, whether from a build before sealing or one that fell back
+// because nothing was reachable, is opened as-is and resealed here so the next
+// run finds it sealed without a fresh sign-in.
 func loadCachedToken() (*oauth2.Token, error) {
 	stored, err := os.ReadFile(tokenPath())
 	if err != nil {
 		return nil, err
 	}
-	plain, sealed, err := atrest.Open(tokenSealName, stored)
+	plain, sealed, err := openFromDisk(tokenSealName, "cached sign-in", stored)
+	if errors.Is(err, atrest.ErrLocked) {
+		fmt.Fprintf(os.Stderr, "The keyring stayed locked, so blick will sign in again: %v\n", err)
+		return nil, os.ErrNotExist
+	}
 	if errors.Is(err, atrest.ErrCannotOpen) {
 		return nil, os.ErrNotExist
 	}
