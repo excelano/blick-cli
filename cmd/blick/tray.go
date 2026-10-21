@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"fyne.io/systray"
@@ -29,12 +31,68 @@ const trayBusName = "com.excelano.blick.Tray"
 // runTray handles `blick tray`: a StatusNotifierItem showing the unread count
 // and next meeting, polled every trayPollInterval. On GNOME it needs the
 // AppIndicator extension to be seen; without a host it runs and waits for one.
-func runTray(cfg Config) {
+// It starts itself in the background and returns, unless --foreground keeps
+// it attached to the terminal.
+func runTray(cfg Config, args []string) {
 	conn, err := dbus.SessionBus()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: the tray needs a desktop session: %v\n", err)
 		os.Exit(1)
 	}
+	if len(args) > 0 && args[0] == "--foreground" {
+		serveTray(cfg, conn)
+		return
+	}
+	var running bool
+	if err := conn.BusObject().Call("org.freedesktop.DBus.NameHasOwner", 0, trayBusName).Store(&running); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if running {
+		fmt.Fprintln(os.Stderr, "blick tray is already running.")
+		os.Exit(1)
+	}
+	logPath, err := startTrayInBackground()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: starting the tray: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("blick tray started. Log: %s\n", logPath)
+}
+
+// startTrayInBackground runs `blick tray --foreground` in its own session, so
+// closing the terminal does not end it, with its output in a log that each
+// start begins afresh.
+func startTrayInBackground() (string, error) {
+	self, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(cache, "blick")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", err
+	}
+	logPath := filepath.Join(dir, "tray.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return "", err
+	}
+	defer logFile.Close()
+	cmd := exec.Command(self, "tray", "--foreground")
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
+	return logPath, cmd.Process.Release()
+}
+
+func serveTray(cfg Config, conn *dbus.Conn) {
 	reply, err := conn.RequestName(trayBusName, dbus.NameFlagDoNotQueue)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -67,7 +125,7 @@ type tray struct {
 }
 
 func newTray(cfg Config) *tray {
-	systray.SetIcon(renderTrayIcon(0, true))
+	systray.SetIcon(renderTrayIcon(false, true))
 	systray.SetTitle("blick")
 	t := &tray{
 		cfg:        cfg,
@@ -148,7 +206,7 @@ func (t *tray) update() {
 	}
 
 	status := trayStatus(len(d.emails), len(d.chats))
-	systray.SetIcon(renderTrayIcon(len(d.emails)+len(d.chats), false))
+	systray.SetIcon(renderTrayIcon(len(d.emails)+len(d.chats) > 0, false))
 	systray.SetTooltip(status)
 	t.status.SetTitle(status)
 	t.meeting.SetTitle(trayMeetingLine(d.meeting))
@@ -171,7 +229,7 @@ func (t *tray) update() {
 // error itself goes to stderr, which lands in the journal under autostart.
 func (t *tray) showProblem(summary string, err error) {
 	fmt.Fprintf(os.Stderr, "blick tray: %v\n", err)
-	systray.SetIcon(renderTrayIcon(0, true))
+	systray.SetIcon(renderTrayIcon(false, true))
 	systray.SetTooltip(summary)
 	t.status.SetTitle(summary)
 }

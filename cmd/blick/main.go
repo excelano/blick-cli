@@ -96,7 +96,7 @@ func main() {
 	// The tray runs without a terminal, so it signs in from the cached token
 	// alone and must not reach the device-code flow below.
 	if len(os.Args) > 1 && os.Args[1] == "tray" {
-		runTray(cfg)
+		runTray(cfg, os.Args[2:])
 		return
 	}
 

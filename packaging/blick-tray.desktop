@@ -2,6 +2,6 @@
 Type=Application
 Name=blick tray
 Comment=Unread mail and chat count and the next meeting in the top bar
-Exec=blick tray
+Exec=blick tray --foreground
 Terminal=false
 NoDisplay=true

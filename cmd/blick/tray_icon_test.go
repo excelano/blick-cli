@@ -11,25 +11,7 @@ import (
 	"testing"
 )
 
-func TestBadgeText(t *testing.T) {
-	for n, want := range map[int]string{1: "1", 9: "9", 10: "9+", 57: "9+"} {
-		if got := badgeText(n); got != want {
-			t.Errorf("badgeText(%d) = %q, want %q", n, got, want)
-		}
-	}
-}
-
-func TestBadgeGlyphsCoverBadgeText(t *testing.T) {
-	for n := 1; n <= 10; n++ {
-		for _, r := range badgeText(n) {
-			if _, ok := badgeGlyphs[r]; !ok {
-				t.Errorf("no glyph for %q", r)
-			}
-		}
-	}
-}
-
-func decodeTrayIcon(t *testing.T, unread int, stale bool) image.Image {
+func decodeTrayIcon(t *testing.T, unread, stale bool) image.Image {
 	t.Helper()
 	img, err := png.Decode(bytes.NewReader(renderTrayIcon(unread, stale)))
 	if err != nil {
@@ -39,24 +21,22 @@ func decodeTrayIcon(t *testing.T, unread int, stale bool) image.Image {
 }
 
 func TestRenderTrayIcon(t *testing.T) {
-	plain := decodeTrayIcon(t, 0, false)
+	plain := decodeTrayIcon(t, false, false)
 	if plain.Bounds().Dx() != 64 || plain.Bounds().Dy() != 64 {
 		t.Fatalf("icon is %v, want 64x64", plain.Bounds())
 	}
 
-	// The badge's disc sits at the lower right; its edge, clear of the
-	// glyphs, is red only when something is unread and the count is fresh.
-	edge := image.Pt(64-badgeRadius-badgeGap, 64-badgeGap-2)
+	center := image.Pt(64-dotRadius-dotGap, dotRadius+dotGap)
 	isRed := func(img image.Image) bool {
-		return color.NRGBAModel.Convert(img.At(edge.X, edge.Y)) == color.NRGBA(badgeRed)
+		return color.NRGBAModel.Convert(img.At(center.X, center.Y)) == color.NRGBA(dotRed)
 	}
 	if isRed(plain) {
-		t.Error("badge drawn with nothing unread")
+		t.Error("dot drawn with nothing unread")
 	}
-	if !isRed(decodeTrayIcon(t, 3, false)) {
-		t.Error("no badge with 3 unread")
+	if !isRed(decodeTrayIcon(t, true, false)) {
+		t.Error("no dot with something unread")
 	}
-	if isRed(decodeTrayIcon(t, 3, true)) {
-		t.Error("badge drawn on a stale icon")
+	if isRed(decodeTrayIcon(t, true, true)) {
+		t.Error("dot drawn on a stale icon")
 	}
 }

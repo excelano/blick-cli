@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func runTray(Config) {
+func runTray(Config, []string) {
 	fmt.Fprintln(os.Stderr, "blick tray is available on Linux only.")
 	os.Exit(1)
 }
