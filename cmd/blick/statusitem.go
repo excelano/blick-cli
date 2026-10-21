@@ -78,8 +78,8 @@ type statusItem struct {
 	revision uint32
 }
 
-// newStatusItem exports the item and its menu on conn and registers it with
-// the panel, again whenever the panel's watcher restarts.
+// newStatusItem exports the item and its menu on conn. The panel does not
+// learn of it until show.
 func newStatusItem(conn *dbus.Conn, id, title string) (*statusItem, error) {
 	s := &statusItem{conn: conn, clicks: make(chan int, 4)}
 
@@ -94,9 +94,12 @@ func newStatusItem(conn *dbus.Conn, id, title string) (*statusItem, error) {
 			"IconName":      {Value: ""},
 			"IconPixmap":    {Value: []pixmap{}},
 			"IconThemePath": {Value: ""},
-			"ToolTip":       {Value: toolTip{Images: []pixmap{}}},
-			"ItemIsMenu":    {Value: true},
-			"Menu":          {Value: menuPath},
+			// The icon's screen-reader label. The GNOME extension asks for it
+			// on every NewIcon and logs an error when it is missing.
+			"IconAccessibleDesc": {Value: title},
+			"ToolTip":            {Value: toolTip{Images: []pixmap{}}},
+			"ItemIsMenu":         {Value: true},
+			"Menu":               {Value: menuPath},
 		},
 	})
 	if err != nil {
@@ -141,15 +144,24 @@ func newStatusItem(conn *dbus.Conn, id, title string) (*statusItem, error) {
 		}
 	}
 
-	if err := conn.AddMatchSignal(
+	return s, nil
+}
+
+// show registers the item with the panel, and again whenever the panel's
+// watcher restarts. The menu must be set first: the GNOME AppIndicator
+// extension reads the layout when the item registers and, while the menu is
+// closed, defers later layout updates until it next opens, but an empty menu
+// never opens, so a menu first read empty stays empty.
+func (s *statusItem) show() error {
+	if err := s.conn.AddMatchSignal(
 		dbus.WithMatchSender("org.freedesktop.DBus"),
 		dbus.WithMatchMember("NameOwnerChanged"),
 		dbus.WithMatchArg(0, watcherName),
 	); err != nil {
-		return nil, err
+		return err
 	}
 	signals := make(chan *dbus.Signal, 4)
-	conn.Signal(signals)
+	s.conn.Signal(signals)
 	s.register()
 	go func() {
 		for sig := range signals {
@@ -158,7 +170,7 @@ func newStatusItem(conn *dbus.Conn, id, title string) (*statusItem, error) {
 			}
 		}
 	}()
-	return s, nil
+	return nil
 }
 
 // register announces the item to the panel's watcher. With no watcher yet,

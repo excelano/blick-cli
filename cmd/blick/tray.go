@@ -148,6 +148,10 @@ func (t *tray) run() {
 	states := make(chan trayState)
 	go poll(t.cfg, states, t.refreshNow)
 	t.redraw()
+	if err := t.item.show(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 	for {
 		select {
 		case s := <-states:
