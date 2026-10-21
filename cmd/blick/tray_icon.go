@@ -11,9 +11,10 @@ import (
 	"image/png"
 )
 
-// trayIconPNG is the orb from the iOS app icon on a transparent background,
-// 64px square. The rays are left out, since they thin to nothing at the
-// panel's 16px.
+// trayIconPNG is the orb from the iOS app icon on a transparent background.
+// The rays are left out, since they thin to nothing at the panel's 16px. It
+// is 32px square, area-averaged from the full-size icon: the panel halves it
+// cleanly, where a larger icon comes out grainy from the panel's own scaling.
 //
 //go:embed tray_icon.png
 var trayIconPNG []byte

@@ -23,10 +23,10 @@ func decodeTrayIcon(t *testing.T, look trayLook) image.Image {
 func TestRenderTrayIcon(t *testing.T) {
 	center := func(look trayLook) color.NRGBA {
 		img := decodeTrayIcon(t, look)
-		if img.Bounds().Dx() != 64 || img.Bounds().Dy() != 64 {
-			t.Fatalf("icon is %v, want 64x64", img.Bounds())
+		if img.Bounds().Dx() != 32 || img.Bounds().Dy() != 32 {
+			t.Fatalf("icon is %v, want 32x32", img.Bounds())
 		}
-		return color.NRGBAModel.Convert(img.At(40, 40)).(color.NRGBA)
+		return color.NRGBAModel.Convert(img.At(20, 20)).(color.NRGBA)
 	}
 
 	unread, idle, stale := center(trayUnread), center(trayIdle), center(trayStale)
