@@ -226,3 +226,20 @@ drift to "AvailableIdle" and eventually Away without an active client sending
 activity — a fire-and-forget CLI can't keep a clean green "Available" alive
 on its own. A manually set status also lapses after a few hours as its
 session expires; re-run the command (or drive it from cron) to refresh.
+
+## Tray
+
+On Linux, `blick tray` puts the iOS app's sun in the desktop's top bar, with a red badge counting unread mail and chats, the same items the dashboard lists. Its menu shows the counts and the next meeting, and offers Open blick, which starts the dashboard in `$TERMINAL` (or `x-terminal-emulator` when that is unset), Join meeting when the next meeting has a Teams link, and Refresh. It checks again every two minutes.
+
+The tray signs in from the cached token alone, because it has no terminal to show a device code in. Run `blick` once in a terminal to sign in first. When the token is missing or refused, or Microsoft can't be reached, the icon greys out and the menu says which, and the tray keeps retrying, so a sign-in made later in a terminal is picked up on the next check.
+
+The icon is a StatusNotifierItem. KDE and most other desktops show these natively; GNOME needs the AppIndicator extension (`gnome-shell-extension-appindicator` on Debian and Ubuntu). Only one tray runs per session, so a second `blick tray` exits.
+
+To start it at login, copy the autostart entry into place. The Debian package ships it:
+
+```sh
+mkdir -p ~/.config/autostart
+cp /usr/share/blick/blick-tray.desktop ~/.config/autostart/
+```
+
+Installed another way, put [packaging/blick-tray.desktop](packaging/blick-tray.desktop) there instead.

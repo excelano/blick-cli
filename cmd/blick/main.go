@@ -1,3 +1,6 @@
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
+
 package main
 
 import (
@@ -49,6 +52,7 @@ func main() {
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, edit, seed)")
 		fmt.Println("  email <contact> [--subject]    Compose and send a message (--cc, --bcc, --attach)")
 		fmt.Println("  chat <contact> [--topic]       Send a Teams chat (group when >1 contact)")
+		fmt.Println("  tray                           Show unread count and next meeting in the desktop tray (Linux)")
 		fmt.Println("  logout                         Clear cached credentials")
 		fmt.Println()
 		fmt.Println("Flags:")
@@ -87,6 +91,13 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	// The tray runs without a terminal, so it signs in from the cached token
+	// alone and must not reach the device-code flow below.
+	if len(os.Args) > 1 && os.Args[1] == "tray" {
+		runTray(cfg)
+		return
 	}
 
 	tok, err := authenticate(cfg)
@@ -390,68 +401,74 @@ func showToday(client *GraphClient) {
 	renderToday(events)
 }
 
-// fetchAndDisplay loads and renders the dashboard. withPresence fetches and
-// shows the current Teams status line at the top — done on the initial open
-// but skipped on refresh, so re-running the dashboard doesn't keep re-reading
-// presence.
-func fetchAndDisplay(client *GraphClient, enableTeams, withPresence bool) []Item {
-	var (
-		presence   *presenceState
-		meeting    *Meeting
-		emails     []Email
-		chats      []ChatMessage
-		meetingErr error
-		emailErr   error
-		chatErr    error
-	)
+// dashboardData is one fetch of what the dashboard shows. A failed meeting
+// fetch leaves meeting nil, the same as having no meeting; presence is nil
+// when it was not asked for or its fetch failed.
+type dashboardData struct {
+	presence *presenceState
+	meeting  *Meeting
+	emails   []Email
+	emailErr error
+	chats    []ChatMessage
+	chatErr  error
+}
 
+// fetchDashboard runs the dashboard's Graph calls concurrently. withPresence
+// adds the current Teams status.
+func fetchDashboard(client *GraphClient, enableTeams, withPresence bool) dashboardData {
+	var d dashboardData
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
-		meeting, meetingErr = client.NextMeeting()
-		if meetingErr != nil {
-			meeting = nil
+		if m, err := client.NextMeeting(); err == nil {
+			d.meeting = m
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		emails, emailErr = client.UnreadEmails()
+		d.emails, d.emailErr = client.UnreadEmails()
 	}()
 
 	if enableTeams {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			chats, chatErr = client.UnreadChats()
+			d.chats, d.chatErr = client.UnreadChats()
 		}()
 	}
 
-	// Presence is best-effort: a failure just omits the status line rather
-	// than disrupting the dashboard.
 	if withPresence {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if p, err := client.getPresence(); err == nil {
-				presence = &p
+				d.presence = &p
 			}
 		}()
 	}
 
 	wg.Wait()
+	return d
+}
 
-	renderDashboard(presence, meeting, emails, emailErr, chats, chatErr, enableTeams)
+// fetchAndDisplay loads and renders the dashboard. withPresence fetches and
+// shows the current Teams status line at the top — done on the initial open
+// but skipped on refresh, so re-running the dashboard doesn't keep re-reading
+// presence.
+func fetchAndDisplay(client *GraphClient, enableTeams, withPresence bool) []Item {
+	d := fetchDashboard(client, enableTeams, withPresence)
+	renderDashboard(d.presence, d.meeting, d.emails, d.emailErr, d.chats, d.chatErr, enableTeams)
 
 	// Chats are numbered ahead of emails, matching renderDashboard's order.
 	var items []Item
-	for i := range chats {
-		items = append(items, Item{Kind: "chat", Chat: &chats[i]})
+	for i := range d.chats {
+		items = append(items, Item{Kind: "chat", Chat: &d.chats[i]})
 	}
-	for i := range emails {
-		items = append(items, Item{Kind: "email", Email: &emails[i]})
+	for i := range d.emails {
+		items = append(items, Item{Kind: "email", Email: &d.emails[i]})
 	}
 
 	return items

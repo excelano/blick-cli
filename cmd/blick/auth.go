@@ -51,21 +51,30 @@ func tokenPath() string {
 	return filepath.Join(configDir(), "token.json")
 }
 
-func authenticate(cfg Config) (*oauth2.Token, error) {
+// refreshCachedToken returns the cached token, refreshed and saved again if it
+// had expired. It never signs in: with no cache, or a refresh token Microsoft
+// no longer accepts, it returns the error.
+func refreshCachedToken(cfg Config) (*oauth2.Token, error) {
 	tok, err := loadCachedToken()
-	if err == nil {
-		src := oauthConfig(cfg).TokenSource(context.Background(), tok)
-		refreshed, err := src.Token()
-		if err == nil {
-			if refreshed.AccessToken != tok.AccessToken {
-				_ = saveCachedToken(refreshed)
-			}
-			return refreshed, nil
-		}
-		// Refresh failed, fall through to device code flow
+	if err != nil {
+		return nil, err
+	}
+	refreshed, err := oauthConfig(cfg).TokenSource(context.Background(), tok).Token()
+	if err != nil {
+		return nil, err
+	}
+	if refreshed.AccessToken != tok.AccessToken {
+		_ = saveCachedToken(refreshed)
+	}
+	return refreshed, nil
+}
+
+func authenticate(cfg Config) (*oauth2.Token, error) {
+	if tok, err := refreshCachedToken(cfg); err == nil {
+		return tok, nil
 	}
 
-	tok, err = deviceCodeFlow(cfg)
+	tok, err := deviceCodeFlow(cfg)
 	if err != nil {
 		return nil, err
 	}

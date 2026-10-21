@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=blick tray
+Comment=Unread mail and chat count and the next meeting in the top bar
+Exec=blick tray
+Terminal=false
+NoDisplay=true
