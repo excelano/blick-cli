@@ -12,11 +12,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
-	"fyne.io/systray"
 	"github.com/godbus/dbus/v5"
 	"golang.org/x/oauth2"
 )
@@ -102,140 +100,102 @@ func serveTray(cfg Config, conn *dbus.Conn) {
 		fmt.Fprintln(os.Stderr, "blick tray is already running.")
 		os.Exit(1)
 	}
-	// The menu is not served until onReady returns, so the loops run apart
-	// from it.
-	systray.Run(func() { go newTray(cfg).run() }, nil)
+	item, err := newStatusItem(conn, "blick", "blick")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	t := &tray{
+		cfg:        cfg,
+		item:       item,
+		state:      trayState{look: trayStale, status: "Checking…"},
+		refreshNow: make(chan struct{}, 1),
+	}
+	t.run()
 }
 
-type tray struct {
-	cfg    Config
-	client *GraphClient // nil until signed in, and again after a failed poll
+// The menu's entries, by index.
+const (
+	entryStatus = iota
+	entryMeeting
+	entryAfterMeeting
+	entryOpen
+	entryJoin
+	entryRefresh
+	entryBeforeQuit
+	entryQuit
+)
 
-	status  *systray.MenuItem
-	meeting *systray.MenuItem
-	open    *systray.MenuItem
-	join    *systray.MenuItem
-	refresh *systray.MenuItem
-	quit    *systray.MenuItem
-
-	refreshNow chan struct{}
-
-	mu      sync.Mutex
+// trayState is everything the icon and menu show. meeting is empty when there
+// is no meeting line to show, and joinURL when there is nothing to join.
+type trayState struct {
+	look    trayLook
+	status  string
+	meeting string
 	joinURL string
 }
 
-func newTray(cfg Config) *tray {
-	systray.SetIcon(renderTrayIcon(trayStale))
-	systray.SetTitle("blick")
-	t := &tray{
-		cfg:        cfg,
-		status:     systray.AddMenuItem("Checking…", ""),
-		meeting:    systray.AddMenuItem("", ""),
-		refreshNow: make(chan struct{}, 1),
-	}
-	t.status.Disable()
-	t.meeting.Disable()
-	t.meeting.Hide()
-	systray.AddSeparator()
-	t.open = systray.AddMenuItem("Open blick", "")
-	t.join = systray.AddMenuItem("Join meeting", "")
-	t.join.Disable()
-	t.refresh = systray.AddMenuItem("Refresh", "")
-	systray.AddSeparator()
-	t.quit = systray.AddMenuItem("Quit", "")
-	return t
+type tray struct {
+	cfg        Config
+	item       *statusItem
+	state      trayState
+	refreshNow chan struct{}
 }
 
-// run answers menu clicks while poll fetches in the background. The menu
-// drops a click that nothing is waiting for, so this loop never blocks on
-// Graph.
+// run owns the tray's state: it redraws for each poll and answers each click,
+// while poll fetches in the background so a click never waits on Graph.
 func (t *tray) run() {
-	go t.poll()
+	states := make(chan trayState)
+	go poll(t.cfg, states, t.refreshNow)
+	t.redraw()
 	for {
 		select {
-		case <-t.refresh.ClickedCh:
-			select {
-			case t.refreshNow <- struct{}{}:
-			default:
+		case s := <-states:
+			t.state = s
+			t.redraw()
+		case entry := <-t.item.clicks:
+			switch entry {
+			case entryOpen:
+				t.openDashboard()
+			case entryJoin:
+				if err := openURL(t.state.joinURL); err != nil {
+					t.note("Couldn't open the browser", err)
+				}
+			case entryRefresh:
+				select {
+				case t.refreshNow <- struct{}{}:
+				default:
+				}
+			case entryQuit:
+				return
 			}
-		case <-t.open.ClickedCh:
-			t.openDashboard()
-		case <-t.join.ClickedCh:
-			t.mu.Lock()
-			url := t.joinURL
-			t.mu.Unlock()
-			if err := openURL(url); err != nil {
-				t.showProblem("Couldn't open the browser", err)
-			}
-		case <-t.quit.ClickedCh:
-			systray.Quit()
-			return
 		}
 	}
 }
 
-func (t *tray) poll() {
-	ticker := time.NewTicker(trayPollInterval)
-	for {
-		t.update()
-		select {
-		case <-ticker.C:
-		case <-t.refreshNow:
-		}
-	}
+func (t *tray) redraw() {
+	s := t.state
+	t.item.setIcon(s.look)
+	t.item.setToolTip(s.status)
+	t.item.setMenu([]menuEntry{
+		entryStatus:       {label: s.status},
+		entryMeeting:      {label: s.meeting, hidden: s.meeting == ""},
+		entryAfterMeeting: {separator: true},
+		entryOpen:         {label: "Open blick", enabled: true},
+		entryJoin:         {label: "Join meeting", enabled: s.joinURL != ""},
+		entryRefresh:      {label: "Refresh", enabled: true},
+		entryBeforeQuit:   {separator: true},
+		entryQuit:         {label: "Quit", enabled: true},
+	})
 }
 
-// update fetches the counts and next meeting and redraws. A failure fades the
-// icon and drops the client, so the next poll starts again from the cached
-// token, which picks up a sign-in made since in a terminal.
-func (t *tray) update() {
-	if t.client == nil {
-		client, err := trayClient(t.cfg)
-		if err != nil {
-			t.showProblem(trayProblem(err), err)
-			return
-		}
-		t.client = client
-	}
-
-	d := fetchDashboard(t.client, t.cfg.EnableTeams, false)
-	if err := errors.Join(d.emailErr, d.chatErr); err != nil {
-		t.client = nil
-		t.showProblem(trayProblem(err), err)
-		return
-	}
-
-	status := trayStatus(len(d.emails), len(d.chats))
-	look := trayIdle
-	if len(d.emails)+len(d.chats) > 0 {
-		look = trayUnread
-	}
-	systray.SetIcon(renderTrayIcon(look))
-	systray.SetTooltip(status)
-	t.status.SetTitle(status)
-	t.meeting.SetTitle(trayMeetingLine(d.meeting))
-	t.meeting.Show()
-
-	t.mu.Lock()
-	t.joinURL = ""
-	if d.meeting != nil {
-		t.joinURL = d.meeting.JoinURL
-	}
-	if t.joinURL == "" {
-		t.join.Disable()
-	} else {
-		t.join.Enable()
-	}
-	t.mu.Unlock()
-}
-
-// showProblem fades the icon and puts summary in place of the counts. The
-// error itself goes to stderr, which lands in the journal under autostart.
-func (t *tray) showProblem(summary string, err error) {
+// note puts summary in place of the counts until the next poll. The error
+// itself goes to stderr, which lands in the log or, under autostart, the
+// journal.
+func (t *tray) note(summary string, err error) {
 	fmt.Fprintf(os.Stderr, "blick tray: %v\n", err)
-	systray.SetIcon(renderTrayIcon(trayStale))
-	systray.SetTooltip(summary)
-	t.status.SetTitle(summary)
+	t.state.status = summary
+	t.redraw()
 }
 
 // openDashboard starts the dashboard in $TERMINAL, or Debian's
@@ -243,7 +203,7 @@ func (t *tray) showProblem(summary string, err error) {
 func (t *tray) openDashboard() {
 	self, err := os.Executable()
 	if err != nil {
-		t.showProblem("Couldn't find blick", err)
+		t.note("Couldn't find blick", err)
 		return
 	}
 	term := os.Getenv("TERMINAL")
@@ -252,10 +212,66 @@ func (t *tray) openDashboard() {
 	}
 	cmd := exec.Command(term, "-e", self)
 	if err := cmd.Start(); err != nil {
-		t.showProblem("Couldn't open a terminal", err)
+		t.note("Couldn't open a terminal", err)
 		return
 	}
 	go cmd.Wait()
+}
+
+// poll sends a fresh trayState every trayPollInterval, and at once on
+// refreshNow.
+func poll(cfg Config, states chan<- trayState, refreshNow <-chan struct{}) {
+	p := trayPoller{cfg: cfg}
+	ticker := time.NewTicker(trayPollInterval)
+	for {
+		states <- p.fetch()
+		select {
+		case <-ticker.C:
+		case <-refreshNow:
+		}
+	}
+}
+
+type trayPoller struct {
+	cfg    Config
+	client *GraphClient // nil until signed in, and again after a failed poll
+}
+
+// fetch reads the counts and next meeting. A failure fades the icon and drops
+// the client, so the next poll starts again from the cached token, which picks
+// up a sign-in made since in a terminal.
+func (p *trayPoller) fetch() trayState {
+	if p.client == nil {
+		client, err := trayClient(p.cfg)
+		if err != nil {
+			return problemState(err)
+		}
+		p.client = client
+	}
+
+	d := fetchDashboard(p.client, p.cfg.EnableTeams, false)
+	if err := errors.Join(d.emailErr, d.chatErr); err != nil {
+		p.client = nil
+		return problemState(err)
+	}
+
+	s := trayState{
+		look:    trayIdle,
+		status:  trayStatus(len(d.emails), len(d.chats)),
+		meeting: trayMeetingLine(d.meeting),
+	}
+	if len(d.emails)+len(d.chats) > 0 {
+		s.look = trayUnread
+	}
+	if d.meeting != nil {
+		s.joinURL = d.meeting.JoinURL
+	}
+	return s
+}
+
+func problemState(err error) trayState {
+	fmt.Fprintf(os.Stderr, "blick tray: %v\n", err)
+	return trayState{look: trayStale, status: trayProblem(err)}
 }
 
 // trayClient signs in from the cached token alone, since the tray has no

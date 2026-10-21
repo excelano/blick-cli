@@ -3,40 +3,34 @@
 
 package main
 
-import (
-	"bytes"
-	"image"
-	"image/color"
-	"image/png"
-	"testing"
-)
+import "testing"
 
-func decodeTrayIcon(t *testing.T, look trayLook) image.Image {
-	t.Helper()
-	img, err := png.Decode(bytes.NewReader(renderTrayIcon(look)))
-	if err != nil {
-		t.Fatal(err)
+func TestDrawOrb(t *testing.T) {
+	for _, size := range trayIconSizes {
+		img := drawOrb(size, trayUnread)
+		if b := img.Bounds(); b.Dx() != size || b.Dy() != size {
+			t.Fatalf("size %d: drew %v", size, b)
+		}
+		if a := img.NRGBAAt(0, 0).A; a != 0 {
+			t.Errorf("size %d: corner alpha %d, want transparent", size, a)
+		}
+		if c := img.NRGBAAt(size/2, size/2); c.A != 0xFF || c.B <= c.R {
+			t.Errorf("size %d: center %v, want opaque blue", size, c)
+		}
 	}
-	return img
 }
 
-func TestRenderTrayIcon(t *testing.T) {
-	center := func(look trayLook) color.NRGBA {
-		img := decodeTrayIcon(t, look)
-		if img.Bounds().Dx() != 32 || img.Bounds().Dy() != 32 {
-			t.Fatalf("icon is %v, want 32x32", img.Bounds())
-		}
-		return color.NRGBAModel.Convert(img.At(20, 20)).(color.NRGBA)
+func TestDrawOrbLooks(t *testing.T) {
+	center := func(look trayLook) (r, g, b, a uint8) {
+		c := drawOrb(32, look).NRGBAAt(20, 20)
+		return c.R, c.G, c.B, c.A
 	}
-
-	unread, idle, stale := center(trayUnread), center(trayIdle), center(trayStale)
-	if unread.B <= unread.R {
-		t.Errorf("unread orb is not blue: %v", unread)
+	if r, g, b, _ := center(trayIdle); r != g || g != b {
+		t.Errorf("idle orb is not grey: %d,%d,%d", r, g, b)
 	}
-	if idle.R != idle.G || idle.G != idle.B {
-		t.Errorf("idle orb is not grey: %v", idle)
-	}
-	if idle.A != 0xFF || stale.A >= idle.A {
-		t.Errorf("stale orb (alpha %d) is not fainter than idle (alpha %d)", stale.A, idle.A)
+	_, _, _, idle := center(trayIdle)
+	_, _, _, stale := center(trayStale)
+	if idle != 0xFF || stale >= idle {
+		t.Errorf("stale orb (alpha %d) is not fainter than idle (alpha %d)", stale, idle)
 	}
 }
