@@ -257,10 +257,10 @@ func (p *trayPoller) fetch() trayState {
 
 	s := trayState{
 		look:    trayIdle,
-		status:  trayStatus(len(d.emails), len(d.chats)),
+		status:  trayStatus(d.unreadEmails, len(d.chats)),
 		meeting: trayMeetingLine(d.meeting),
 	}
-	if len(d.emails)+len(d.chats) > 0 {
+	if d.unreadEmails+len(d.chats) > 0 {
 		s.look = trayUnread
 	}
 	if d.meeting != nil {

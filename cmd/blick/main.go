@@ -403,14 +403,17 @@ func showToday(client *GraphClient) {
 
 // dashboardData is one fetch of what the dashboard shows. A failed meeting
 // fetch leaves meeting nil, the same as having no meeting; presence is nil
-// when it was not asked for or its fetch failed.
+// when it was not asked for or its fetch failed. unreadEmails is the Inbox's
+// whole unread count, of which emails holds the newest few; when the count
+// cannot be read it is the length of emails.
 type dashboardData struct {
-	presence *presenceState
-	meeting  *Meeting
-	emails   []Email
-	emailErr error
-	chats    []ChatMessage
-	chatErr  error
+	presence     *presenceState
+	meeting      *Meeting
+	emails       []Email
+	unreadEmails int
+	emailErr     error
+	chats        []ChatMessage
+	chatErr      error
 }
 
 // fetchDashboard runs the dashboard's Graph calls concurrently. withPresence
@@ -432,6 +435,14 @@ func fetchDashboard(client *GraphClient, enableTeams, withPresence bool) dashboa
 		d.emails, d.emailErr = client.UnreadEmails()
 	}()
 
+	var unreadCount int
+	var countErr error
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		unreadCount, countErr = client.UnreadInboxCount()
+	}()
+
 	if enableTeams {
 		wg.Add(1)
 		go func() {
@@ -451,6 +462,12 @@ func fetchDashboard(client *GraphClient, enableTeams, withPresence bool) dashboa
 	}
 
 	wg.Wait()
+	// The count and the list are read separately, so mail arriving between
+	// the two can leave the count behind the list.
+	d.unreadEmails = len(d.emails)
+	if countErr == nil {
+		d.unreadEmails = max(unreadCount, len(d.emails))
+	}
 	return d
 }
 
@@ -460,7 +477,7 @@ func fetchDashboard(client *GraphClient, enableTeams, withPresence bool) dashboa
 // presence.
 func fetchAndDisplay(client *GraphClient, enableTeams, withPresence bool) []Item {
 	d := fetchDashboard(client, enableTeams, withPresence)
-	renderDashboard(d.presence, d.meeting, d.emails, d.emailErr, d.chats, d.chatErr, enableTeams)
+	renderDashboard(d, enableTeams)
 
 	// Chats are numbered ahead of emails, matching renderDashboard's order.
 	var items []Item

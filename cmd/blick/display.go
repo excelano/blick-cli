@@ -1,3 +1,6 @@
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
+
 package main
 
 import (
@@ -145,27 +148,27 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-1] + "…"
 }
 
-func renderDashboard(presence *presenceState, meeting *Meeting, emails []Email, emailErr error, chats []ChatMessage, chatErr error, enableTeams bool) {
+func renderDashboard(d dashboardData, enableTeams bool) {
 	fmt.Println()
 
 	// Presence status line (initial open only; omitted when the fetch failed)
-	if presence != nil {
-		fmt.Printf("  %s●%s %s%s%s\n\n", presenceColor(presence.Availability), reset, bold, presenceLabel(*presence), reset)
+	if d.presence != nil {
+		fmt.Printf("  %s●%s %s%s%s\n\n", presenceColor(d.presence.Availability), reset, bold, presenceLabel(*d.presence), reset)
 	}
 
 	// Meeting
-	if meeting != nil {
+	if meeting := d.meeting; meeting != nil {
 		timeColor := green
 		until := untilTime(meeting.Start)
-		d := time.Until(meeting.Start)
-		if d < 15*time.Minute {
+		left := time.Until(meeting.Start)
+		if left < 15*time.Minute {
 			timeColor = yellow
 		}
-		if d < 3*time.Minute && d >= 0 {
+		if left < 3*time.Minute && left >= 0 {
 			timeColor = orange
 			until = "Starting soon"
 		}
-		if d < 0 {
+		if left < 0 {
 			timeColor = red
 			until = "now"
 		}
@@ -188,24 +191,24 @@ func renderDashboard(presence *presenceState, meeting *Meeting, emails []Email, 
 	// Chats (shown above emails; numbered first)
 	if !enableTeams {
 		fmt.Printf("  💬 %sTeams disabled (set \"enable_teams\": true in config to enable)%s\n\n", dim, reset)
-	} else if chatErr != nil {
-		fmt.Printf("  💬 %sCould not load chats: %v%s\n\n", red, chatErr, reset)
-	} else if len(chats) == 0 {
+	} else if d.chatErr != nil {
+		fmt.Printf("  💬 %sCould not load chats: %v%s\n\n", red, d.chatErr, reset)
+	} else if len(d.chats) == 0 {
 		fmt.Printf("  💬 %sNo unread chats%s\n\n", dim, reset)
 	} else {
-		fmt.Printf("  💬 %sunread chats (%d):%s\n", bold, len(chats), reset)
-		printChatRows(chats)
+		fmt.Printf("  💬 %sunread chats (%d):%s\n", bold, len(d.chats), reset)
+		printChatRows(d.chats)
 		fmt.Println()
 	}
 
 	// Emails (numbered after chats)
-	if emailErr != nil {
-		fmt.Printf("  📧 %sCould not load emails: %v%s\n\n", red, emailErr, reset)
-	} else if len(emails) == 0 {
+	if d.emailErr != nil {
+		fmt.Printf("  📧 %sCould not load emails: %v%s\n\n", red, d.emailErr, reset)
+	} else if len(d.emails) == 0 {
 		fmt.Printf("  📧 %sNo unread emails%s\n\n", dim, reset)
 	} else {
-		fmt.Printf("  📧 %sunread emails (%d):%s\n", bold, len(emails), reset)
-		printEmailRows(emails, len(chats))
+		fmt.Printf("  📧 %s%s:%s\n", bold, unreadEmailsHeader(len(d.emails), d.unreadEmails), reset)
+		printEmailRows(d.emails, len(d.chats))
 		fmt.Println()
 	}
 }
@@ -440,4 +443,13 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%dh", h)
 	}
 	return fmt.Sprintf("%dh %dm", h, m)
+}
+
+// unreadEmailsHeader heads the dashboard's email list, saying so when the list
+// shows fewer than the Inbox holds unread.
+func unreadEmailsHeader(shown, total int) string {
+	if total > shown {
+		return fmt.Sprintf("unread emails (%d, showing %d)", total, shown)
+	}
+	return fmt.Sprintf("unread emails (%d)", shown)
 }

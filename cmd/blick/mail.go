@@ -1,3 +1,6 @@
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
+
 package main
 
 import (
@@ -75,6 +78,22 @@ func (g *GraphClient) UnreadEmails() ([]Email, error) {
 		return nil, err
 	}
 	return parseEmails(data, "")
+}
+
+// UnreadInboxCount returns how many Inbox messages are unread, the figure
+// Outlook badges. UnreadEmails lists only the newest few of them.
+func (g *GraphClient) UnreadInboxCount() (int, error) {
+	data, err := g.get("/me/mailFolders/inbox", url.Values{"$select": {"unreadItemCount"}})
+	if err != nil {
+		return 0, err
+	}
+	var folder struct {
+		UnreadItemCount int `json:"unreadItemCount"`
+	}
+	if err := json.Unmarshal(data, &folder); err != nil {
+		return 0, err
+	}
+	return folder.UnreadItemCount, nil
 }
 
 // EmailsSince returns Inbox messages received at or after `since`, read
