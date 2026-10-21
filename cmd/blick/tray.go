@@ -125,7 +125,7 @@ type tray struct {
 }
 
 func newTray(cfg Config) *tray {
-	systray.SetIcon(renderTrayIcon(false, true))
+	systray.SetIcon(renderTrayIcon(trayStale))
 	systray.SetTitle("blick")
 	t := &tray{
 		cfg:        cfg,
@@ -185,7 +185,7 @@ func (t *tray) poll() {
 	}
 }
 
-// update fetches the counts and next meeting and redraws. A failure greys the
+// update fetches the counts and next meeting and redraws. A failure fades the
 // icon and drops the client, so the next poll starts again from the cached
 // token, which picks up a sign-in made since in a terminal.
 func (t *tray) update() {
@@ -206,7 +206,11 @@ func (t *tray) update() {
 	}
 
 	status := trayStatus(len(d.emails), len(d.chats))
-	systray.SetIcon(renderTrayIcon(len(d.emails)+len(d.chats) > 0, false))
+	look := trayIdle
+	if len(d.emails)+len(d.chats) > 0 {
+		look = trayUnread
+	}
+	systray.SetIcon(renderTrayIcon(look))
 	systray.SetTooltip(status)
 	t.status.SetTitle(status)
 	t.meeting.SetTitle(trayMeetingLine(d.meeting))
@@ -225,11 +229,11 @@ func (t *tray) update() {
 	t.mu.Unlock()
 }
 
-// showProblem greys the icon and puts summary in place of the counts. The
+// showProblem fades the icon and puts summary in place of the counts. The
 // error itself goes to stderr, which lands in the journal under autostart.
 func (t *tray) showProblem(summary string, err error) {
 	fmt.Fprintf(os.Stderr, "blick tray: %v\n", err)
-	systray.SetIcon(renderTrayIcon(false, true))
+	systray.SetIcon(renderTrayIcon(trayStale))
 	systray.SetTooltip(summary)
 	t.status.SetTitle(summary)
 }

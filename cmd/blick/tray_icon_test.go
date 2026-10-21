@@ -11,9 +11,9 @@ import (
 	"testing"
 )
 
-func decodeTrayIcon(t *testing.T, unread, stale bool) image.Image {
+func decodeTrayIcon(t *testing.T, look trayLook) image.Image {
 	t.Helper()
-	img, err := png.Decode(bytes.NewReader(renderTrayIcon(unread, stale)))
+	img, err := png.Decode(bytes.NewReader(renderTrayIcon(look)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,22 +21,22 @@ func decodeTrayIcon(t *testing.T, unread, stale bool) image.Image {
 }
 
 func TestRenderTrayIcon(t *testing.T) {
-	plain := decodeTrayIcon(t, false, false)
-	if plain.Bounds().Dx() != 64 || plain.Bounds().Dy() != 64 {
-		t.Fatalf("icon is %v, want 64x64", plain.Bounds())
+	center := func(look trayLook) color.NRGBA {
+		img := decodeTrayIcon(t, look)
+		if img.Bounds().Dx() != 64 || img.Bounds().Dy() != 64 {
+			t.Fatalf("icon is %v, want 64x64", img.Bounds())
+		}
+		return color.NRGBAModel.Convert(img.At(40, 40)).(color.NRGBA)
 	}
 
-	center := image.Pt(64-dotRadius-dotGap, dotRadius+dotGap)
-	isRed := func(img image.Image) bool {
-		return color.NRGBAModel.Convert(img.At(center.X, center.Y)) == color.NRGBA(dotRed)
+	unread, idle, stale := center(trayUnread), center(trayIdle), center(trayStale)
+	if unread.B <= unread.R {
+		t.Errorf("unread orb is not blue: %v", unread)
 	}
-	if isRed(plain) {
-		t.Error("dot drawn with nothing unread")
+	if idle.R != idle.G || idle.G != idle.B {
+		t.Errorf("idle orb is not grey: %v", idle)
 	}
-	if !isRed(decodeTrayIcon(t, true, false)) {
-		t.Error("no dot with something unread")
-	}
-	if isRed(decodeTrayIcon(t, true, true)) {
-		t.Error("dot drawn on a stale icon")
+	if idle.A != 0xFF || stale.A >= idle.A {
+		t.Errorf("stale orb (alpha %d) is not fainter than idle (alpha %d)", stale.A, idle.A)
 	}
 }

@@ -229,9 +229,9 @@ session expires; re-run the command (or drive it from cron) to refresh.
 
 ## Tray
 
-On Linux, `blick tray` puts the iOS app's sun in the desktop's top bar, with a red dot when there is unread mail or chat, the same items the dashboard lists. Its menu shows the counts and the next meeting, and offers Open blick, which starts the dashboard in `$TERMINAL` (or `x-terminal-emulator` when that is unset), Join meeting when the next meeting has a Teams link, and Refresh. It checks again every two minutes.
+On Linux, `blick tray` puts the orb from the iOS app's icon in the desktop's top bar: blue when there is unread mail or chat, the same items the dashboard lists, and grey when there is nothing. Its menu shows the counts and the next meeting, and offers Open blick, which starts the dashboard in `$TERMINAL` (or `x-terminal-emulator` when that is unset), Join meeting when the next meeting has a Teams link, and Refresh. It checks again every two minutes.
 
-The tray signs in from the cached token alone, because it has no terminal to show a device code in. Run `blick` once in a terminal to sign in first. When the token is missing or refused, or Microsoft can't be reached, the icon greys out and the menu says which, and the tray keeps retrying, so a sign-in made later in a terminal is picked up on the next check.
+The tray signs in from the cached token alone, because it has no terminal to show a device code in. Run `blick` once in a terminal to sign in first. When the token is missing or refused, or Microsoft can't be reached, the orb fades and the menu says which, and the tray keeps retrying, so a sign-in made later in a terminal is picked up on the next check.
 
 The icon is a StatusNotifierItem. KDE and most other desktops show these natively; GNOME needs the AppIndicator extension (`gnome-shell-extension-appindicator` on Debian and Ubuntu). `blick tray` starts the tray in the background and returns, writing its log to `~/.cache/blick/tray.log`; `blick tray --foreground` keeps it in the terminal instead. Only one tray runs per session, so a second `blick tray` exits.
 
