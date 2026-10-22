@@ -30,10 +30,10 @@ func init() {
 	}
 }
 
-// printRecipientLine renders one line of the reply-all recipient summary,
-// e.g. "  To:  Alice, Bob, Carol". Silently omits the line when the list
-// is empty (self-filtered down to nothing, or no recipients in that
-// group on the original) so single-recipient threads don't show a stub.
+// printRecipientLine renders one recipient header line, e.g.
+// "  To: Alice, Bob, Carol". It omits the line when the list is empty
+// so a message with no Cc, or a reply-all self-filtered down to nothing,
+// doesn't show a stub.
 func printRecipientLine(label string, rs []Recipient) {
 	if len(rs) == 0 {
 		return

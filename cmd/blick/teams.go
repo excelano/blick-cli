@@ -1,3 +1,6 @@
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
+
 package main
 
 import (
@@ -216,6 +219,35 @@ func (g *GraphClient) GetChatMessages(chatID string, count int) ([]ChatMessage, 
 	}
 
 	return messages, nil
+}
+
+// GetChatMembers returns everyone in the chat except the signed-in user,
+// who is in every chat.
+func (g *GraphClient) GetChatMembers(chatID string) ([]Recipient, error) {
+	data, err := g.get(fmt.Sprintf("/chats/%s/members", chatID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Value []struct {
+			DisplayName string `json:"displayName"`
+			Email       string `json:"email"`
+			UserID      string `json:"userId"`
+		} `json:"value"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+
+	var members []Recipient
+	for _, m := range result.Value {
+		if m.UserID == g.userID {
+			continue
+		}
+		members = append(members, Recipient{Name: m.DisplayName, Address: m.Email})
+	}
+	return members, nil
 }
 
 // LookupUserID resolves a Graph user's object ID from their primary email

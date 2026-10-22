@@ -576,6 +576,8 @@ func viewItem(client *GraphClient, item Item, index int, showFull bool) {
 	switch item.Kind {
 	case "email":
 		fmt.Printf("\n  %sFrom:%s %s\n", bold, reset, item.Email.From)
+		printRecipientLine("To", item.Email.To)
+		printRecipientLine("Cc", item.Email.Cc)
 		fmt.Printf("  %sSubject:%s %s\n", bold, reset, item.Email.Subject)
 		fmt.Printf("  %sReceived:%s %s\n", bold, reset, item.Email.Received.Local().Format("Mon Jan 2 3:04 PM"))
 		if item.Email.Junk {
@@ -613,7 +615,13 @@ func viewItem(client *GraphClient, item Item, index int, showFull bool) {
 		fmt.Println()
 
 	case "chat":
-		fmt.Printf("\n  %sChat:%s %s\n\n", bold, reset, item.Chat.Topic)
+		fmt.Printf("\n  %sChat:%s %s\n", bold, reset, item.Chat.Topic)
+		members, err := client.GetChatMembers(item.Chat.ChatID)
+		if err != nil {
+			fmt.Printf("  %sError loading members: %v%s\n", red, err, reset)
+		}
+		printRecipientLine("Members", members)
+		fmt.Println()
 
 		messages, err := client.GetChatMessages(item.Chat.ChatID, 5)
 		if err != nil {
