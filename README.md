@@ -60,7 +60,7 @@ go build ./cmd/blick
 mv blick ~/bin/
 ```
 
-Requires Go 1.26+.
+`go.mod` names the Go toolchain it needs.
 
 ## Setup
 
