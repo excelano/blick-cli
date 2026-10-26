@@ -220,7 +220,7 @@ Teams status picker writes), paired with a `setPresence` session so the
 status shows even with no Teams client running. A manually set status takes
 precedence over Teams' own session-level state.
 
-One caveat worth knowing: Microsoft presence is activity-driven. `busy`,
+Microsoft presence is activity-driven. `busy`,
 `dnd`, `brb`, and `offline` hold as a solid status, but `available` will
 drift to "AvailableIdle" and eventually Away without an active client sending
 activity — a fire-and-forget CLI can't keep a clean green "Available" alive
