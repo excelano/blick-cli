@@ -52,7 +52,7 @@ func main() {
 		fmt.Println("  contacts ...                   Manage the address book (list, add, remove, show, edit, seed)")
 		fmt.Println("  email <contact> [--subject]    Compose and send a message (--cc, --bcc, --attach)")
 		fmt.Println("  chat <contact> [--topic]       Send a Teams chat (group when >1 contact)")
-		fmt.Println("  tray                           Show unread count and next meeting in the desktop tray (Linux)")
+		fmt.Println("  tray [--autostart yes|no]      Show unread count and next meeting in the desktop tray (Linux)")
 		fmt.Println("  logout                         Clear cached credentials")
 		fmt.Println()
 		fmt.Println("Flags:")
@@ -87,17 +87,17 @@ func main() {
 		}
 	}
 
+	// The tray runs without a terminal, so it signs in from the cached token
+	// alone and must not reach the device-code flow below.
+	if len(os.Args) > 1 && os.Args[1] == "tray" {
+		runTray(os.Args[2:])
+		return
+	}
+
 	cfg, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
-	}
-
-	// The tray runs without a terminal, so it signs in from the cached token
-	// alone and must not reach the device-code flow below.
-	if len(os.Args) > 1 && os.Args[1] == "tray" {
-		runTray(cfg, os.Args[2:])
-		return
 	}
 
 	tok, err := authenticate(cfg)

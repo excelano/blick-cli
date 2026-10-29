@@ -26,18 +26,53 @@ const trayPollInterval = 2 * time.Minute
 // a second icon.
 const trayBusName = "com.excelano.blick.Tray"
 
+const trayUsage = `Usage: blick tray [--foreground | --autostart yes|no]
+
+Starts the tray in the background and returns. --foreground keeps it in the
+terminal; --autostart yes starts it at each login and --autostart no stops
+that, without starting or stopping the tray running now.`
+
 // runTray handles `blick tray`: a StatusNotifierItem showing the unread count
 // and next meeting, polled every trayPollInterval. On GNOME it needs the
 // AppIndicator extension to be seen; without a host it runs and waits for one.
 // It starts itself in the background and returns, unless --foreground keeps
 // it attached to the terminal.
-func runTray(cfg Config, args []string) {
+func runTray(args []string) {
+	foreground := false
+	if len(args) > 0 {
+		switch args[0] {
+		case "-h", "--help":
+			fmt.Println(trayUsage)
+			return
+		case "--autostart":
+			choice := ""
+			if len(args) > 1 {
+				choice = args[1]
+			}
+			if err := setAutostart(choice); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "--foreground":
+			foreground = len(args) == 1
+		}
+		if !foreground {
+			fmt.Fprintf(os.Stderr, "Error: blick tray takes --foreground or --autostart yes|no, not %q\n", strings.Join(args, " "))
+			os.Exit(1)
+		}
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 	conn, err := dbus.SessionBus()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: the tray needs a desktop session: %v\n", err)
 		os.Exit(1)
 	}
-	if len(args) > 0 && args[0] == "--foreground" {
+	if foreground {
 		serveTray(cfg, conn)
 		return
 	}

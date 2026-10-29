@@ -70,8 +70,6 @@ nfpms:
         dst: /usr/share/doc/blick/SECURITY.md
       - src: ./setup.sh
         dst: /usr/share/doc/blick/setup.sh
-      - src: ./packaging/blick-tray.desktop
-        dst: /usr/share/blick/blick-tray.desktop
 
 checksum:
   name_template: "checksums.txt"

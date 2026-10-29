@@ -26,6 +26,15 @@ Then install it, so `apt upgrade` keeps it current:
 sudo apt install blick
 ```
 
+The [tray](#tray) shows in GNOME only through the AppIndicator extension, which Debian's GNOME does not turn on by itself. On Debian, install and enable it:
+
+```sh
+sudo apt install gnome-shell-extension-appindicator
+gnome-extensions enable ubuntu-appindicators@ubuntu.com
+```
+
+Then log out and back in, since GNOME loads a newly installed extension only at login; if the enable step said the extension does not exist, run it again once logged back in. `gnome-extensions list --enabled` shows whether it is on. Ubuntu's desktop has the same extension on already.
+
 ### Homebrew
 
 On macOS or Linux, tap and trust the repository once — Homebrew gates third-party taps behind explicit trust (one-time setup):
@@ -233,13 +242,6 @@ On Linux, `blick tray` puts the orb from the iOS app's icon in the desktop's top
 
 The tray signs in from the cached token alone, because it has no terminal to show a device code in. Run `blick` once in a terminal to sign in first. When the token is missing or refused, or Microsoft can't be reached, the orb fades and the menu says which, and the tray keeps retrying, so a sign-in made later in a terminal is picked up on the next check.
 
-The icon is a StatusNotifierItem. KDE and most other desktops show these natively; GNOME needs the AppIndicator extension (`gnome-shell-extension-appindicator` on Debian and Ubuntu). `blick tray` starts the tray in the background and returns, writing its log to `~/.cache/blick/tray.log`; `blick tray --foreground` keeps it in the terminal instead. Only one tray runs per session, so a second `blick tray` exits.
+The icon is a StatusNotifierItem. KDE and most other desktops show these natively; GNOME needs the AppIndicator extension, which [Install](#debian-and-ubuntu) covers. `blick tray` starts the tray in the background and returns, writing its log to `~/.cache/blick/tray.log`; `blick tray --foreground` keeps it in the terminal instead. Only one tray runs per session, so a second `blick tray` exits.
 
-To start it at login, copy the autostart entry into place. The Debian package ships it:
-
-```sh
-mkdir -p ~/.config/autostart
-cp /usr/share/blick/blick-tray.desktop ~/.config/autostart/
-```
-
-Installed another way, put [packaging/blick-tray.desktop](packaging/blick-tray.desktop) there instead.
+To start the tray at each login, run `blick tray --autostart yes`; `blick tray --autostart no` stops that. Neither starts or stops the tray that is running now.
