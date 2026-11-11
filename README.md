@@ -35,21 +35,6 @@ gnome-extensions enable ubuntu-appindicators@ubuntu.com
 
 Then log out and back in, since GNOME loads a newly installed extension only at login; if the enable step said the extension does not exist, run it again once logged back in. `gnome-extensions list --enabled` shows whether it is on. Ubuntu's desktop has the same extension on already.
 
-### Homebrew
-
-On macOS or Linux, tap and trust the repository once — Homebrew gates third-party taps behind explicit trust (one-time setup):
-
-```sh
-brew tap excelano/tap
-brew trust excelano/tap
-```
-
-Then install it, so `brew upgrade` keeps it current:
-
-```sh
-brew install blick
-```
-
 ### Windows
 
 With [WinGet](https://learn.microsoft.com/windows/package-manager/), so `winget upgrade` keeps it current:

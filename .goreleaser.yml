@@ -1,3 +1,6 @@
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+#
 # goreleaser configuration. Triggered by .github/workflows/release.yml on
 # every "v*" tag push. To test locally (optional):
 #   goreleaser release --snapshot --clean
@@ -77,19 +80,3 @@ checksum:
 release:
   draft: false
   prerelease: auto
-
-brews:
-  - name: blick
-    repository:
-      owner: excelano
-      name: homebrew-tap
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    directory: Formula
-    homepage: "https://excelano.com/blick-cli/"
-    description: "Check Microsoft 365 mail, Teams chats, and next meeting from the terminal"
-    license: "MIT"
-    install: |
-      bin.install "blick"
-    test: |
-      system "#{bin}/blick", "--version"
