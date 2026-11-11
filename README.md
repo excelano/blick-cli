@@ -88,7 +88,7 @@ az login
 
 ### Option B: Manual (Azure portal)
 
-1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations
+1. Go to [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → App registrations
 2. **New registration**
    - Name: `blick`
    - Supported account types: Accounts in this organizational directory only
@@ -96,15 +96,7 @@ az login
    - Check `https://login.microsoftonline.com/common/oauth2/nativeclient`
    - Enable **Allow public client flows** (required for device code flow)
    - Save
-4. **API permissions** → Add a permission → Microsoft Graph → Delegated permissions:
-   - `User.Read`
-   - `Mail.ReadWrite`
-   - `Mail.Send`
-   - `Calendars.Read`
-   - `Presence.ReadWrite`
-   - `People.Read`
-   - `Chat.ReadWrite` (optional, Teams chat support)
-   - `Chat.Create` (optional, Teams chat support)
+4. **API permissions** → Add a permission → Microsoft Graph → Delegated permissions, and add each one in the [Permissions](#permissions) table (the two `Chat` scopes only for Teams chat support)
 5. Copy **Application (client) ID** and **Directory (tenant) ID** from the Overview page
 
 Create the config file:
@@ -137,25 +129,24 @@ $ blick
 
   📅 Standup with Tony — in 47 min · 10:30 AM — Online
 
-  📧 unread emails (3):
-    1. Alex K. — "Deck revisions"              (10 min ago · 9:42 AM)
-    2. Jordan R. — "RE: Contract draft"         (1 hour ago · 8:53 AM)
-    3. Newsletter — "Weekly digest"             (3 hours ago · 6:48 AM)
-
   💬 unread chats (2):
-    4. Sam P. — "quick question on timeline"    (32 min ago · 9:20 AM)
-    5. Riley T. — "can you check the numbers"   (1 hour ago · 8:51 AM)
+    1. Sam P. — "quick question on timeline"    (32 min ago · 9:20 AM)
+    2. Riley T. — "can you check the numbers"   (1 hour ago · 8:51 AM)
 
-  Commands:
-    <N>      view               r<N>     reply
-    d<N>     done               r        refresh
-    t        show today         x        exit (mark all read)
-    h        help               q        quit
+  📧 unread emails (3):
+    3. Alex K. — "Deck revisions"              (10 min ago · 9:42 AM)
+    4. Jordan R. — "RE: Contract draft"         (1 hour ago · 8:53 AM)
+    5. Newsletter — "Weekly digest"             (3 hours ago · 6:48 AM)
 
-blick> 1
+  Common commands:
+    <N>      view               r        refresh
+    <N>r     reply-all          q        quit
+    <N>d     done               h        help
+
+blick> 3
   (shows full email body)
 
-blick> r4
+blick> 1r
   Reply in Sam P.:
   (end with `.` on a line by itself, or Ctrl-C to cancel)
   > Should be ready by EOD tomorrow.
@@ -163,14 +154,14 @@ blick> r4
   > .
   Sent.
 
-blick> d3
+blick> 5d
   Marked as read: Weekly digest
 
 blick> x
   All marked as read.
 ```
 
-Each short command has a full-word equivalent — `reply 4`, `done 3`, `refresh`, `exit`, `quit`, `help`, `today`. Type `h` (or `help`) at the prompt for the full reference.
+Each short command has a full-word equivalent — `reply 1`, `done 5`, `refresh`, `exit`, `quit`, `help`, `today`. Type `h` (or `help`) at the prompt for the full reference.
 
 `t` (or `today`) shows the full calendar for the day, with past events dimmed and the current event highlighted:
 
@@ -184,7 +175,7 @@ $ blick today
       1:00 PM – 2:00 PM    Project review · now     Online
       4:00 PM – 5:00 PM    Demo prep                Conf Room A
 
-  4 events · 4h scheduled
+  4 events · 3h scheduled
 ```
 
 The same view is available inside the REPL by typing `today`.
@@ -200,7 +191,7 @@ See [SECURITY.md](SECURITY.md) for how the encryption works on each platform and
 
 ## Permissions
 
-All scopes are user-consentable by default per Microsoft's stock Graph policy. Individual tenants can require admin consent for any of them — see the [Admin Consent](#admin-consent) section.
+Each is a delegated Microsoft Graph permission; [Admin Consent](#admin-consent) covers tenants that restrict them.
 
 | Permission | What it does |
 |---|---|
