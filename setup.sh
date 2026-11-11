@@ -1,7 +1,10 @@
 #!/bin/bash
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
 set -e
 
-# Register an Azure AD app for blick using the Azure CLI.
+# Register a Microsoft Entra ID app for blick using the Azure CLI.
 # Requires: az cli installed and logged in (az login)
 #
 # Permission GUIDs (Microsoft Graph, delegated):
@@ -20,7 +23,7 @@ if ! command -v az &> /dev/null; then
     echo "You can install it (https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux)"
     echo "or register the app manually in the Azure portal:"
     echo ""
-    echo "  1. Go to https://portal.azure.com → Azure Active Directory → App registrations"
+    echo "  1. Go to https://portal.azure.com → Microsoft Entra ID → App registrations"
     echo "  2. New registration → Name: 'blick' → Accounts in this org only"
     echo "  3. Under Authentication → Add platform → Mobile and desktop"
     echo "     → Check 'https://login.microsoftonline.com/common/oauth2/nativeclient'"

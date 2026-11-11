@@ -1,3 +1,6 @@
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
+
 package main
 
 import (
@@ -38,7 +41,7 @@ func loadConfig() (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return Config{}, fmt.Errorf("config file not found at %s\n\nCreate it with:\n  mkdir -p %s\n  cat > %s << 'EOF'\n  {\n    \"client_id\": \"YOUR_APP_CLIENT_ID\",\n    \"tenant_id\": \"YOUR_TENANT_ID\"\n  }\n  EOF\n\nSee README.md for Azure AD app registration steps", path, configDir(), path)
+			return Config{}, fmt.Errorf("config file not found at %s\n\nCreate it with:\n  mkdir -p %s\n  cat > %s << 'EOF'\n  {\n    \"client_id\": \"YOUR_APP_CLIENT_ID\",\n    \"tenant_id\": \"YOUR_TENANT_ID\"\n  }\n  EOF\n\nSee README.md for Microsoft Entra ID app registration steps", path, configDir(), path)
 		}
 		return Config{}, fmt.Errorf("reading config: %w", err)
 	}

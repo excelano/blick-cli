@@ -64,7 +64,7 @@ func main() {
 		fmt.Println("          {\"client_id\": \"...\", \"tenant_id\": \"...\"}")
 		fmt.Println("Contacts: ~/.config/blick/contacts.json")
 		fmt.Println()
-		fmt.Println("See README.md for Azure AD app registration.")
+		fmt.Println("See README.md for Microsoft Entra ID app registration.")
 		os.Exit(0)
 	}
 
