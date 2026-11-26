@@ -47,7 +47,7 @@ archives:
 
 nfpms:
   - id: blick
-    package_name: blick
+    package_name: blick-cli
     file_name_template: "{{ .ConventionalFileName }}"
     maintainer: David M. Anderson <david.anderson@excelano.com>
     description: |
@@ -55,7 +55,7 @@ nfpms:
       Single-screen view: unread Outlook mail, unread Teams chats, next
       meeting. Reply, mark-read, mark-all-read, refresh, today's calendar
       inline. Pure Go, device-code OAuth, requires your own Azure app
-      registration (see /usr/share/doc/blick/setup.sh).
+      registration (see /usr/share/doc/blick-cli/setup.sh).
     homepage: https://github.com/excelano/blick-cli
     license: MIT
     formats:
@@ -63,15 +63,20 @@ nfpms:
     section: mail
     priority: optional
     bindir: /usr/bin
+    replaces:
+      - blick (<< 1.0.0)
+    deb:
+      breaks:
+        - blick (<< 1.0.0)
     contents:
       - src: ./LICENSE
-        dst: /usr/share/doc/blick/copyright
+        dst: /usr/share/doc/blick-cli/copyright
       - src: ./README.md
-        dst: /usr/share/doc/blick/README.md
+        dst: /usr/share/doc/blick-cli/README.md
       - src: ./SECURITY.md
-        dst: /usr/share/doc/blick/SECURITY.md
+        dst: /usr/share/doc/blick-cli/SECURITY.md
       - src: ./setup.sh
-        dst: /usr/share/doc/blick/setup.sh
+        dst: /usr/share/doc/blick-cli/setup.sh
 
 checksum:
   name_template: "checksums.txt"

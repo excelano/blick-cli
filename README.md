@@ -23,8 +23,10 @@ curl -fsSL https://excelano.com/apt/setup.sh | sudo sh
 Then install it, so `apt upgrade` keeps it current:
 
 ```sh
-sudo apt install blick
+sudo apt install blick-cli
 ```
+
+`sudo apt install blick` instead installs it together with [Blick for the Linux desktop](https://github.com/excelano/blick-dart), the same panel in its own window.
 
 The [tray](#tray) shows in GNOME only through the AppIndicator extension, which Debian's GNOME does not turn on by itself. On Debian, install and enable it:
 
@@ -69,7 +71,7 @@ az login
 ./setup.sh
 ```
 
-(Or if you installed via apt, `setup.sh` ships at `/usr/share/doc/blick/setup.sh`.)
+(Or if you installed via apt, `setup.sh` ships at `/usr/share/doc/blick-cli/setup.sh`.)
 
 ### Option B: Manual (Azure portal)
 
